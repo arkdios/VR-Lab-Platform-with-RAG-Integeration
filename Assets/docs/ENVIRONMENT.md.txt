@@ -1,0 +1,11 @@
+# Environment log
+- Date:
+- Unity Editor (exact build): 6000.6.0f1
+- WebXR Export version: 0.25.0
+- WebXR Interactions version: 0.25.0
+- XR Interaction Toolkit version: 3.6.1
+- Input System version: 1.20.0
+- OpenXR plugin version: 1.18.0
+- Quest 3S system software version:
+- Quest Browser version:
+- Desktop browser + version: Google Chrome 154.0.8037.97 (Official Build) (64-bit)

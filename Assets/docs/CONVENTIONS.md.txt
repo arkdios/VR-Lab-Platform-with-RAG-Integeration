@@ -1,0 +1,7 @@
+# Conventions
+- Namespaces: PhysicsLab.Core.*, PhysicsLab.Lab.*
+- One MonoBehaviour per file. File name = class name.
+- Fields: [SerializeField] private _camelCase or camelCase. Public API as properties.
+- Every public class and method has an XML doc comment.
+- Physics code in FixedUpdate, input and visuals in Update.
+- Commit .meta files. Builds go in Builds/.

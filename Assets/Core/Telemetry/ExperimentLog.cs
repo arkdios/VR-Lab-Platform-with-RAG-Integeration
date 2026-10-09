@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Text;
+using static PhysicsLab.Core.Telemetry.CsvFormat;
 
 namespace PhysicsLab.Core.Telemetry
 {
@@ -66,11 +66,5 @@ namespace PhysicsLab.Core.Telemetry
                 Text(r.user_agent));
             csv.Append(row).Append('\n');
         }
-
-        private static string Text(string value) =>
-            "\"" + (value ?? string.Empty).Replace("\"", "\"\"") + "\"";
-
-        private static string Number(IFormattable value) =>
-            value.ToString("0.###", CultureInfo.InvariantCulture);
     }
 }

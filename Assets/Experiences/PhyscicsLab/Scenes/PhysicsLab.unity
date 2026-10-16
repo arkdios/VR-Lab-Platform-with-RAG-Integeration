@@ -1812,7 +1812,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 1, y: 1}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0.000030517578, y: 0}
+  m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 160, y: 30}
   m_Pivot: {x: 1, y: 1}
 --- !u!114 &526454804
@@ -1942,8 +1942,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 00a532a009aa46d41b5510424282b5ab, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PhysicsLab.Core.Rigs.RigModeSwitcher
-  desktopRig: {fileID: 0}
-  headsetRig: {fileID: 0}
+  desktopRig: {fileID: 1149269547}
+  headsetRig: {fileID: 715546554}
   debugOverride: 0
   logChanges: 1
 --- !u!1 &678484071
@@ -2653,6 +2653,11 @@ MonoBehaviour:
     m_VarianceClampScale: 0.9
     m_ContrastAdaptiveSharpening: 0
   m_Version: 2
+--- !u!1 &715546554 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 1717954561962503725, guid: f6336ac4ac8b4d34bc5072418cdc62a0, type: 3}
+  m_PrefabInstance: {fileID: 715546551}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &722222032
 GameObject:
   m_ObjectHideFlags: 0
@@ -3129,7 +3134,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: -0.000030517578, y: 0}
+  m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 904, y: 664}
   m_Pivot: {x: 0, y: 0}
 --- !u!114 &917392871
@@ -3966,7 +3971,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1056155771}
-  - component: {fileID: 1056155772}
   m_Layer: 0
   m_Name: Stereo Group
   m_TagString: Untagged
@@ -3991,25 +3995,6 @@ Transform:
   - {fileID: 249856867}
   m_Father: {fileID: 1165360830}
   m_LocalEulerAnglesHint: {x: 90, y: 0, z: 180}
---- !u!114 &1056155772
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1056155770}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f9040c403cd2a0b4e9f81d7cf2478a0e, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::PhysicsLab.Core.Stereo.StereoPreviewController
-  monoCamera: {fileID: 1446478414}
-  leftEyeCamera: {fileID: 2118930289}
-  rightEyeCamera: {fileID: 1419323667}
-  stereoCamera: {fileID: 1655755152}
-  stereoGroup: {fileID: 1056155770}
-  toggleKey: 34
-  startWithPreviewOn: 0
 --- !u!1 &1106576926
 GameObject:
   m_ObjectHideFlags: 0
@@ -4321,6 +4306,9 @@ GameObject:
   - component: {fileID: 1149269548}
   - component: {fileID: 1149269550}
   - component: {fileID: 1149269551}
+  - component: {fileID: 1149269554}
+  - component: {fileID: 1149269553}
+  - component: {fileID: 1149269552}
   m_Layer: 0
   m_Name: Desktop Rig
   m_TagString: Untagged
@@ -4402,6 +4390,63 @@ MonoBehaviour:
   reach: 4
   dragGain: 15
   maxDragSpeed: 3
+--- !u!114 &1149269552
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1149269547}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 64d6e91ef2fa1264da286bca1e0c9c93, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PhysicsLab.Core.Stereo.ZeroParallaxController
+  stereoCamera: {fileID: 1655755152}
+  minSize: 1
+  maxSize: 10
+  changeSpeed: 2
+  decreaseKey: 25
+  increaseKey: 26
+--- !u!114 &1149269553
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1149269547}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a20ae22a5166a0b418acdef784102840, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PhysicsLab.Core.Stereo.IpdController
+  leftEyeCamera: {fileID: 2118930289}
+  rightEyeCamera: {fileID: 1419323667}
+  ipdMeters: 0.1
+  minIpdMeters: 0.03
+  maxIpdMeters: 0.12
+  changeSpeed: 0.02
+  decreaseKey: 29
+  increaseKey: 30
+--- !u!114 &1149269554
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1149269547}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f9040c403cd2a0b4e9f81d7cf2478a0e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PhysicsLab.Core.Stereo.StereoPreviewController
+  monoCamera: {fileID: 1446478414}
+  leftEyeCamera: {fileID: 2118930289}
+  rightEyeCamera: {fileID: 1419323667}
+  stereoCamera: {fileID: 1655755152}
+  stereoGroup: {fileID: 1056155770}
+  toggleKey: 34
+  startWithPreviewOn: 0
 --- !u!1 &1165360829
 GameObject:
   m_ObjectHideFlags: 0
@@ -5518,8 +5563,6 @@ GameObject:
   - component: {fileID: 1419323664}
   - component: {fileID: 1419323667}
   - component: {fileID: 1419323665}
-  - component: {fileID: 1419323668}
-  - component: {fileID: 1419323669}
   m_Layer: 0
   m_Name: Right Eye Camera
   m_TagString: Untagged
@@ -5637,45 +5680,6 @@ Camera:
   m_OcclusionCulling: 1
   m_StereoConvergence: 10
   m_StereoSeparation: 0.022
---- !u!114 &1419323668
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1419323663}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a20ae22a5166a0b418acdef784102840, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::PhysicsLab.Core.Stereo.IpdController
-  leftEyeCamera: {fileID: 0}
-  rightEyeCamera: {fileID: 0}
-  ipdMeters: 0.1
-  minIpdMeters: 0.03
-  maxIpdMeters: 0.12
-  changeSpeed: 0.02
-  decreaseKey: 29
-  increaseKey: 30
---- !u!114 &1419323669
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1419323663}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f9040c403cd2a0b4e9f81d7cf2478a0e, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::PhysicsLab.Core.Stereo.StereoPreviewController
-  monoCamera: {fileID: 0}
-  leftEyeCamera: {fileID: 0}
-  rightEyeCamera: {fileID: 0}
-  stereoCamera: {fileID: 0}
-  stereoGroup: {fileID: 0}
-  toggleKey: 34
-  startWithPreviewOn: 0
 --- !u!1 &1446478412
 GameObject:
   m_ObjectHideFlags: 0
@@ -5688,7 +5692,6 @@ GameObject:
   - component: {fileID: 1446478414}
   - component: {fileID: 1446478413}
   - component: {fileID: 1446478416}
-  - component: {fileID: 1446478417}
   m_Layer: 0
   m_Name: Mono Camera
   m_TagString: MainCamera
@@ -5814,25 +5817,6 @@ MonoBehaviour:
     m_VarianceClampScale: 0.9
     m_ContrastAdaptiveSharpening: 0
   m_Version: 2
---- !u!114 &1446478417
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1446478412}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f9040c403cd2a0b4e9f81d7cf2478a0e, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::PhysicsLab.Core.Stereo.StereoPreviewController
-  monoCamera: {fileID: 1446478414}
-  leftEyeCamera: {fileID: 2118930289}
-  rightEyeCamera: {fileID: 1419323667}
-  stereoCamera: {fileID: 1655755152}
-  stereoGroup: {fileID: 1056155770}
-  toggleKey: 34
-  startWithPreviewOn: 0
 --- !u!1 &1470727725
 GameObject:
   m_ObjectHideFlags: 0
@@ -6512,8 +6496,6 @@ GameObject:
   - component: {fileID: 1655755150}
   - component: {fileID: 1655755152}
   - component: {fileID: 1655755151}
-  - component: {fileID: 1655755153}
-  - component: {fileID: 1655755154}
   m_Layer: 0
   m_Name: Stereo Camera
   m_TagString: Untagged
@@ -6631,43 +6613,6 @@ Camera:
   m_OcclusionCulling: 1
   m_StereoConvergence: 10
   m_StereoSeparation: 0.022
---- !u!114 &1655755153
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1655755149}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 64d6e91ef2fa1264da286bca1e0c9c93, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::PhysicsLab.Core.Stereo.ZeroParallaxController
-  stereoCamera: {fileID: 1655755152}
-  minSize: 1
-  maxSize: 10
-  changeSpeed: 2
-  decreaseKey: 25
-  increaseKey: 26
---- !u!114 &1655755154
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1655755149}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f9040c403cd2a0b4e9f81d7cf2478a0e, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::PhysicsLab.Core.Stereo.StereoPreviewController
-  monoCamera: {fileID: 1446478414}
-  leftEyeCamera: {fileID: 2118930289}
-  rightEyeCamera: {fileID: 1419323667}
-  stereoCamera: {fileID: 1655755152}
-  stereoGroup: {fileID: 1056155770}
-  toggleKey: 34
-  startWithPreviewOn: 0
 --- !u!1 &1687870558
 GameObject:
   m_ObjectHideFlags: 0
@@ -7620,7 +7565,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 1, y: 0}
   m_AnchorMax: {x: 1, y: 0}
-  m_AnchoredPosition: {x: 0.000030517578, y: 0}
+  m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 904, y: 664}
   m_Pivot: {x: 1, y: 0}
 --- !u!114 &1826523247
@@ -9323,8 +9268,6 @@ GameObject:
   - component: {fileID: 2118930286}
   - component: {fileID: 2118930289}
   - component: {fileID: 2118930287}
-  - component: {fileID: 2118930290}
-  - component: {fileID: 2118930291}
   m_Layer: 0
   m_Name: Left Eye Camera
   m_TagString: Untagged
@@ -9442,45 +9385,6 @@ Camera:
   m_OcclusionCulling: 1
   m_StereoConvergence: 10
   m_StereoSeparation: 0.022
---- !u!114 &2118930290
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2118930285}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a20ae22a5166a0b418acdef784102840, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::PhysicsLab.Core.Stereo.IpdController
-  leftEyeCamera: {fileID: 2118930289}
-  rightEyeCamera: {fileID: 1419323667}
-  ipdMeters: 0.1
-  minIpdMeters: 0.03
-  maxIpdMeters: 0.12
-  changeSpeed: 0.02
-  decreaseKey: 29
-  increaseKey: 30
---- !u!114 &2118930291
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2118930285}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f9040c403cd2a0b4e9f81d7cf2478a0e, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::PhysicsLab.Core.Stereo.StereoPreviewController
-  monoCamera: {fileID: 1446478414}
-  leftEyeCamera: {fileID: 2118930289}
-  rightEyeCamera: {fileID: 1419323667}
-  stereoCamera: {fileID: 1655755152}
-  stereoGroup: {fileID: 1056155770}
-  toggleKey: 34
-  startWithPreviewOn: 0
 --- !u!1 &2129790926
 GameObject:
   m_ObjectHideFlags: 0

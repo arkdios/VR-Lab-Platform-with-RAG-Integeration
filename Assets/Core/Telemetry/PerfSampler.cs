@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 namespace PhysicsLab.Core.Telemetry
@@ -18,6 +19,11 @@ namespace PhysicsLab.Core.Telemetry
         public float FrameMsAverage { get; private set; }
         public float FrameMsMax { get; private set; }
 
+        /// <summary>
+        /// Raised after Fps, FrameMsAverage and FrameMsMax hold a new one-second window.
+        /// </summary>
+        public event Action WindowPublished;
+
         private void Update()
         {
             float frameSeconds = Time.unscaledDeltaTime;
@@ -37,6 +43,7 @@ namespace PhysicsLab.Core.Telemetry
             _elapsedSeconds = 0f;
             _frameCount = 0;
             _longestFrameSeconds = 0f;
+            WindowPublished?.Invoke();
         }
     }
 }

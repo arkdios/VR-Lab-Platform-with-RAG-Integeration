@@ -16,6 +16,7 @@ namespace PhysicsLab.Lab
 
         [SerializeField] private MeasurementRecorder recorder;
         [SerializeField] private LabAssistant assistant;
+        [SerializeField] private PerfLogger perfLogger;
 
         /// <summary>
         /// Student report: one row per recorded measurement.
@@ -28,6 +29,12 @@ namespace PhysicsLab.Lab
         /// </summary>
         public void ExportExperimentLog() =>
             BrowserBridge.SaveTextFile("experiment-log.csv", "text/csv", assistant.Log.ToCsv());
+
+        /// <summary>
+        /// Instructor export: one row per second of frame statistics.
+        /// </summary>
+        public void ExportPerfLog() =>
+            BrowserBridge.SaveTextFile("perf-log.csv", "text/csv", perfLogger.ToCsv());
 
         private string BuildMeasurementsCsv()
         {

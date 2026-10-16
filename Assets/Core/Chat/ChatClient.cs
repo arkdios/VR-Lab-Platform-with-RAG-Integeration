@@ -31,7 +31,7 @@ namespace PhysicsLab.Core.Chat
     /// </summary>
     public class ChatClient : MonoBehaviour
     {
-        [SerializeField] private string endpointUrl = "https://localhost:8001/ask";
+        [SerializeField] private string endpointUrl = "http://localhost:8001/ask";
         [SerializeField] private float timeoutSeconds = 20f;
 
         private void Awake()

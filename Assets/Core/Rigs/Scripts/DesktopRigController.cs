@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.EventSystems;
 
 /// I use namespace to group the class under a name, in order to keep
 /// the "Core" folder code separate
@@ -82,12 +83,20 @@ namespace PhysicsLab.Core.Rigs
             Mouse mouse = Mouse.current;
             if (mouse == null) return;
 
-            if (Cursor.lockState != CursorLockMode.Locked && mouse.leftButton.wasPressedThisFrame)
+            bool clickedWorld = mouse.leftButton.wasPressedThisFrame && !IsPointerOverUi();
+            if (Cursor.lockState != CursorLockMode.Locked && clickedWorld)
             {
                 Cursor.lockState = CursorLockMode.Locked;
                 Cursor.visible = false;
             }
         }
+
+        /// <summary>
+        /// True when the mouse is over a UI element, so the click belongs to the UI
+        /// and must not capture the mouse.
+        /// </summary>
+        private static bool IsPointerOverUi() =>
+            EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
 
         /// <summary>
         /// Turns the body and tilts the camera group from mouse movement.

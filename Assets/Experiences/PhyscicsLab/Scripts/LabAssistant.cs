@@ -42,6 +42,8 @@ namespace PhysicsLab.Lab
         [SerializeField] private ChatClient chatClient;
         [SerializeField] private PerfSampler perfSampler;
         [SerializeField] private ExperimentCondition condition = ExperimentCondition.StateAndHistory;
+        [Tooltip("Print each request and reply in the Console. Turn off for real measurements.")]
+        [SerializeField] private bool logPayloads = true;
 
         private readonly ExperimentLog _experimentLog = new ExperimentLog();
         private string _sessionId;
@@ -89,6 +91,7 @@ namespace PhysicsLab.Lab
         {
             IsBusy = true;
             RequestStarted?.Invoke();
+            if (logPayloads) Debug.Log($"[LabAssistant] POST payload: {json}", this);
             chatClient.Post(json, result => OnResult(pending, result));
         }
 
@@ -112,6 +115,10 @@ namespace PhysicsLab.Lab
         private void OnResult(PendingRequest pending, ChatResult result)
         {
             IsBusy = false;
+            if (logPayloads)
+            {
+                Debug.Log($"[LabAssistant] Reply: status={result.Status}, http={result.HttpCode}, body={result.Body}", this);
+            }
             ChatStatus status = ParseAnswer(result, out AssistantResponse response);
             _experimentLog.Add(CreateRecord(pending, result, response, status));
             ReplyReady?.Invoke(new AssistantReply(response.answer, status));

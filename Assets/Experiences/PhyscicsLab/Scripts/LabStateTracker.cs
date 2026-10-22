@@ -33,11 +33,13 @@ namespace PhysicsLab.Lab
         private string _heldObjectId = string.Empty;
         private string _selectedObjectId = string.Empty;
         private Vector3 _lastLoggedRingPosition;
+        private Vector3 _lastLoggedScalePosition;
         private float _nextRingCheckTime;
 
         private void Awake()
         {
             _log = new EventLog(logCapacity);
+            _lastLoggedScalePosition = springScale.transform.position;
             _lastLoggedRingPosition = ring.position;
         }
 
@@ -54,7 +56,7 @@ namespace PhysicsLab.Lab
             if (Time.time < _nextRingCheckTime) return;
 
             _nextRingCheckTime = Time.time + ringCheckSeconds;
-            LogRingIfMoved();
+            LogMovedBodies();
         }
 
         /// <summary>
@@ -137,7 +139,18 @@ namespace PhysicsLab.Lab
         {
             _heldObjectId = held ? labObject.ObjectId : string.Empty;
             if (held) _selectedObjectId = labObject.ObjectId;
-            _log.Add(held ? LabEventTypes.Grab : LabEventTypes.Release, labObject.ObjectId);
+            _log.Add(held ? LabEventTypes.Grab : LabEventTypes.Release, labObject.ObjectId,
+                held ? string.Empty : PlacementOf(labObject));
+        }
+
+        /// <summary>
+        /// Where the object rests when it is released, as "x,z" in table space (metres).
+        /// This is the placement signal. It uses the same format as ring_moved.
+        /// </summary>
+        private string PlacementOf(LabObject labObject)
+        {
+            Vector3 tablePosition = ToTableSpace(labObject.transform.position);
+            return $"{Format(tablePosition.x)},{Format(tablePosition.z)}";
         }
 
         private void OnClicked(LabObject labObject)
@@ -156,17 +169,24 @@ namespace PhysicsLab.Lab
             _log.Add(LabEventTypes.StepChanged, "lab", $"{previousId}->{currentId}");
 
         /// <summary>
-        /// Checks four times a second. Logs only after a 2 cm move since a moving ring would otherwise log
-        /// ~50 events per second and flush the log.
+        /// Checks the ring and the spring scale four times a second. Each logs only after a 2 cm move,
+        /// since a moving body would otherwise log ~50 events per second and flush the log.
         /// </summary>
-        private void LogRingIfMoved()
+        private void LogMovedBodies()
         {
-            Vector3 moved = ring.position - _lastLoggedRingPosition;
+            LogIfMoved(ring.position, ref _lastLoggedRingPosition, LabEventTypes.RingMoved, "ring");
+            LogIfMoved(springScale.transform.position, ref _lastLoggedScalePosition,
+                LabEventTypes.ScaleMoved, springScaleObject.ObjectId);
+        }
+
+        private void LogIfMoved(Vector3 position, ref Vector3 lastLogged, string type, string subject)
+        {
+            Vector3 moved = position - lastLogged;
             if (moved.sqrMagnitude < ringMoveThresholdMetres * ringMoveThresholdMetres) return;
 
-            _lastLoggedRingPosition = ring.position;
-            Vector3 tablePosition = ToTableSpace(ring.position);
-            _log.Add(LabEventTypes.RingMoved, "ring", $"{Format(tablePosition.x)},{Format(tablePosition.z)}");
+            lastLogged = position;
+            Vector3 tablePosition = ToTableSpace(position);
+            _log.Add(type, subject, $"{Format(tablePosition.x)},{Format(tablePosition.z)}");
         }
 
         private EventRecord LatestEventOrEmpty() =>

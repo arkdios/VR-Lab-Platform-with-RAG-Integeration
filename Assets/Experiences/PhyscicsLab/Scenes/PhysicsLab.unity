@@ -11980,7 +11980,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PhysicsLab.Lab.StringVisual
   points:
-  - anchor: {fileID: 0}
+  - anchor: {fileID: 26153318}
     localOffset: {x: 0, y: 0, z: 0}
   - anchor: {fileID: 54736061}
     localOffset: {x: 0, y: 0, z: 0}
@@ -14817,7 +14817,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PhysicsLab.Lab.HudPresenter
   steps: {fileID: 1868551808}
-  springScale: {fileID: 0}
+  springScale: {fileID: 26153323}
   recorder: {fileID: 1563616623}
   exporter: {fileID: 1563616622}
   stepLabel: {fileID: 465627597}
@@ -20989,8 +20989,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PhysicsLab.Lab.LabStateTracker
   ring: {fileID: 54736063}
   tableCenter: {fileID: 182394312}
-  springScale: {fileID: 0}
-  springScaleObject: {fileID: 0}
+  springScale: {fileID: 26153323}
+  springScaleObject: {fileID: 26153324}
   pulleys:
   - {fileID: 84799250}
   - {fileID: 1733330443}
@@ -21000,7 +21000,7 @@ MonoBehaviour:
   - {fileID: 1202671073}
   - {fileID: 1007904765}
   - {fileID: 54736068}
-  - {fileID: 0}
+  - {fileID: 26153324}
   steps: {fileID: 1868551808}
   logCapacity: 50
   recentEventCount: 10

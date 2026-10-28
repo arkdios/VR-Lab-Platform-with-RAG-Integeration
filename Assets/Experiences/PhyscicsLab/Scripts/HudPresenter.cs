@@ -52,7 +52,7 @@ namespace PhysicsLab.Lab
             if (Time.unscaledTime < _nextReadingRefresh) return;
 
             _nextReadingRefresh = Time.unscaledTime + readingRefreshSeconds;
-            readingLabel.text = $"Spring scale: {springScale.ReadingNewtons:0.00} N";
+            readingLabel.SetText("Spring scale: {0:2} N", springScale.ReadingNewtons); // no string garbage
         }
 
         private void OnNextStepPressed() => steps.TryAdvance();

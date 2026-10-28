@@ -3,6 +3,7 @@ using System.Collections;
 using System.Text;
 using UnityEngine;
 using UnityEngine.Networking;
+using PhysicsLab.Core.Web;
 
 namespace PhysicsLab.Core.Chat
 {
@@ -36,6 +37,13 @@ namespace PhysicsLab.Core.Chat
 
         private void Awake()
         {
+            // ?api=https://host/ask in the page URL replaces the scene value.
+            // Only https is accepted.
+            if (UrlParameters.TryGet("api", out string overrideUrl) &&
+                overrideUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+            {
+                endpointUrl = overrideUrl;
+            }
             WarnIfMixedContent();
         }
 

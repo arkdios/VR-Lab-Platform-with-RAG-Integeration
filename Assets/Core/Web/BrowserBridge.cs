@@ -17,6 +17,9 @@ namespace PhysicsLab.Core.Web
 
         [DllImport("__Internal")]
         private static extern string GetUserAgentString();
+
+        [DllImport("__Internal")]
+        private static extern void SyncPersistentFiles();
 #endif
 
         public static string UserAgent
@@ -42,6 +45,16 @@ namespace PhysicsLab.Core.Web
             string path = Path.Combine(Application.persistentDataPath, fileName);
             File.WriteAllText(path, content);
             Debug.Log($"[BrowserBridge] Saved {path}");
+#endif
+        }
+
+        /// <summary>
+        /// Makes files written under persistentDataPath survive a page reload (WebGL only).
+        /// </summary>
+        public static void FlushFiles()
+        {
+#if UNITY_WEBGL && !UNITY_EDITOR
+               SyncPersistentFiles();
 #endif
         }
     }

@@ -1,3 +1,4 @@
+using PhysicsLab.Core.Web;
 using System;
 using System.IO;
 using UnityEngine;
@@ -77,6 +78,7 @@ namespace PhysicsLab.Lab
             try
             {
                 File.WriteAllText(_path, JsonUtility.ToJson(BuildData(), true));
+                BrowserBridge.FlushFiles();
             }
             catch (Exception exception) when (exception is IOException || exception is UnauthorizedAccessException)
             {
@@ -179,6 +181,7 @@ namespace PhysicsLab.Lab
             _restoring = true;
             Apply(data);
             _restoring = false;
+            stateTracker.ResetLog(); // restored values are not student actions
             stateTracker.RecordEvent(LabEventTypes.ProgressRestored, "lab", steps.CurrentStepId);
         }
 

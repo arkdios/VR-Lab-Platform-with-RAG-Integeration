@@ -39,6 +39,12 @@ namespace PhysicsLab.Lab
         {
             assistant.RequestStarted += OnRequestStarted;
             assistant.ReplyReady += OnReplyReady;
+
+            // The panel may have been hidden while a request ran. Match the real state.
+            bool busy = assistant.IsBusy;
+            SetButtonsInteractable(!busy);
+            if (busy) statusLabel.text = "Thinking...";
+            else if (statusLabel.text == "Thinking...") statusLabel.text = string.Empty;
         }
 
         private void OnDisable()

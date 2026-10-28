@@ -1,7 +1,8 @@
-using System;
 using PhysicsLab.Core.Chat;
+using PhysicsLab.Core.State;
 using PhysicsLab.Core.Telemetry;
 using PhysicsLab.Core.Web;
+using System;
 using UnityEngine;
 
 namespace PhysicsLab.Lab
@@ -84,7 +85,7 @@ namespace PhysicsLab.Lab
                 return;
             }
 
-            Send(json, new PendingRequest(question, _requestCounter, buildMs));
+            Send(json, new PendingRequest(question, condition, _requestCounter, buildMs));
         }
 
         private void Send(string json, PendingRequest pending)
@@ -103,6 +104,7 @@ namespace PhysicsLab.Lab
             payload.condition = WireNames.Of(condition);
             payload.question_type = WireNames.Of(question);
             payload.question = WireNames.QuestionText(question);
+            ApplyCondition(payload);
             payload.perf = new PerfState
             {
                 fps = perfSampler.Fps,
@@ -110,6 +112,25 @@ namespace PhysicsLab.Lab
                 frame_ms_max = perfSampler.FrameMsMax
             };
             return JsonUtility.ToJson(payload);
+        }
+
+        // Removes the fields this condition must not see.
+        private void ApplyCondition(LabStatePayload payload)
+        {
+            if (condition == ExperimentCondition.StateAndHistory) return;
+
+            payload.previous_step = string.Empty;
+            payload.previous_action = new EventRecord();
+            payload.recent_events = new EventRecord[0];
+            if (condition == ExperimentCondition.CurrentState) return;
+
+            payload.current_step = string.Empty;
+            payload.held_object = string.Empty;
+            payload.selected_object = string.Empty;
+            payload.ring_position = Vector3.zero;
+            payload.pulleys = new PulleyState[0];
+            payload.masses = new MassState[0];
+            payload.spring_scale = new ScaleState();
         }
 
         private void OnResult(PendingRequest pending, ChatResult result)
@@ -158,7 +179,7 @@ namespace PhysicsLab.Lab
             {
                 session_id = _sessionId,
                 request_id = pending.RequestId,
-                condition = WireNames.Of(condition),
+                condition = WireNames.Of(pending.Condition),
                 question_type = WireNames.Of(pending.Question),
                 status = status.ToString(),
                 http_code = result.HttpCode,
@@ -190,9 +211,10 @@ namespace PhysicsLab.Lab
         /// </summary>
         private readonly struct PendingRequest
         {
-            public PendingRequest(QuestionType question, int requestId, float buildMs)
+            public PendingRequest(QuestionType question, ExperimentCondition condition, int requestId, float buildMs)
             {
                 Question = question;
+                Condition = condition;
                 RequestId = requestId;
                 BuildMs = buildMs;
                 StartedMs = SessionClock.NowMs;
@@ -200,6 +222,7 @@ namespace PhysicsLab.Lab
             }
 
             public QuestionType Question { get; }
+            public ExperimentCondition Condition { get; }
             public int RequestId { get; }
             public float BuildMs { get; }
             public long StartedMs { get; }

@@ -66,6 +66,17 @@ namespace PhysicsLab.Lab
             _log.Add(type, subject, detail);
 
         /// <summary>
+        /// Clears the event log and resets the movement baselines. Used after progress is restored,
+        /// so restored values do not look like student actions.
+        /// </summary>
+        public void ResetLog()
+        {
+            _log = new EventLog(logCapacity);
+            _lastLoggedRingPosition = ring.position;
+            _lastLoggedScalePosition = springScale.transform.position;
+        }
+
+        /// <summary>
         /// Builds a snapshot of the lab right now, aka. building the whole payload from current
         /// values. And since it returns a fresh object each call. Callers can edit it freely.
         /// </summary>
@@ -137,7 +148,8 @@ namespace PhysicsLab.Lab
         /// </summary>
         private void OnHeldChanged(LabObject labObject, bool held)
         {
-            _heldObjectId = held ? labObject.ObjectId : string.Empty;
+            if (held) _heldObjectId = labObject.ObjectId;
+            else if (_heldObjectId == labObject.ObjectId) _heldObjectId = string.Empty; // only clear for the held one
             if (held) _selectedObjectId = labObject.ObjectId;
             _log.Add(held ? LabEventTypes.Grab : LabEventTypes.Release, labObject.ObjectId,
                 held ? string.Empty : PlacementOf(labObject));

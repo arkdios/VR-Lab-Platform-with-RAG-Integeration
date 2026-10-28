@@ -48,14 +48,18 @@ namespace PhysicsLab.Lab
 
         public void SetAngle(float degrees)
         {
-            angleDegrees = Mathf.Repeat(degrees, 360f); // Mathf.Repeat()'s role is to wrap 365 deg to 5 deg
+            float wrapped = Mathf.Repeat(degrees, 360f); // wraps 365 deg to 5 deg
+            if (Mathf.Approximately(wrapped, angleDegrees)) return; // no change, no event
+            angleDegrees = wrapped;
             PlaceOnRim();
             AngleChanged?.Invoke(this);
         }
 
         public void SetMass(float kilograms)
         {
-            massKg = Mathf.Clamp(kilograms, 0f, MaxMassKg);
+            float clamped = Mathf.Clamp(kilograms, 0f, MaxMassKg);
+            if (Mathf.Approximately(clamped, massKg)) return; // no change, no event
+            massKg = clamped;
             MassChanged?.Invoke(this);
         }
 
@@ -68,6 +72,9 @@ namespace PhysicsLab.Lab
         private void PlaceOnRim()
         {
             Vector3 outward = OutwardDirection();
+            // Turn the pulley so its local +Z points at the table center. The wheel then
+            // lines up with the string, and the axle stays tangent to the rim.
+            transform.rotation = Quaternion.LookRotation(-outward, Vector3.up);
             transform.position = tableCenter.position + outward * rimRadiusMetres;
             massObject.transform.position =
                 transform.position + outward * massOutsetMetres + Vector3.down * massDropMetres;

@@ -38,7 +38,11 @@ namespace PhysicsLab.Lab
         {
             // Does nothing until the mouse is captured since the first click captures the mouse
             // (DesktopRigController). Therefore, it should not also grab.
-            if (Cursor.lockState != CursorLockMode.Locked) return;
+            if (Cursor.lockState != CursorLockMode.Locked)
+            {
+                EndDrag(); // pointer lock was lost (Esc) while dragging: drop the object
+                return;
+            }
 
             UpdateHover();
             HandleMouseButton();

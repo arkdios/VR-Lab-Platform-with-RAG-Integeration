@@ -84,8 +84,23 @@ namespace PhysicsLab.Core.Rigs
             if (mouse == null) return;
 
             bool clickedWorld = mouse.leftButton.wasPressedThisFrame && !IsPointerOverUi();
-            if (Cursor.lockState != CursorLockMode.Locked && clickedWorld)
+
+            // Tab is a backup switch. It works even if the UI blocks the click test above.
+            Keyboard keyboard = Keyboard.current;
+            bool tabPressed = keyboard != null && keyboard.tabKey.wasPressedThisFrame;
+
+            if (Cursor.lockState == CursorLockMode.Locked)
             {
+                // Locked now: Tab frees the mouse so the HUD buttons can be clicked.
+                if (tabPressed)
+                {
+                    Cursor.lockState = CursorLockMode.None;
+                    Cursor.visible = true;
+                }
+            }
+            else if (clickedWorld || tabPressed)
+            {
+                // Free now: a click on the world, or Tab, captures the mouse.
                 Cursor.lockState = CursorLockMode.Locked;
                 Cursor.visible = false;
             }

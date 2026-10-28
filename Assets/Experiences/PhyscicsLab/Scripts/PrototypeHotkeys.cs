@@ -15,6 +15,12 @@ namespace PhysicsLab.Lab
         [SerializeField] private LabStepTracker steps;
         [SerializeField] private LabProgressStore progress;
 
+        private void Awake()
+        {
+            // Test keys are for the Editor and development builds only. F9 deletes saved progress.
+            if (!Application.isEditor && !Debug.isDebugBuild) enabled = false;
+        }
+
         private void Update()
         {
             Keyboard keyboard = Keyboard.current;

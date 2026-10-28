@@ -24,4 +24,11 @@ mergeInto(LibraryManager.library, {
     stringToUTF8(text, buffer, size);
     return buffer;
   }
+
+  // Copies files written under persistentDataPath into the browser's IndexedDB.
+  SyncPersistentFiles: function () {
+       FS.syncfs(false, function (error) {
+         if (error) console.warn('[BrowserBridge] syncfs failed', error);
+         });
+  }
 });

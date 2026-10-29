@@ -1,4 +1,5 @@
 using UnityEngine;
+using PhysicsLab.Lab.Rope;
 
 namespace PhysicsLab.Lab
 {
@@ -13,13 +14,17 @@ namespace PhysicsLab.Lab
         [Tooltip("Spring constant in newtons per metre. Higher = stiffer scale.")]
         [SerializeField] private float springConstant = 40f;
         [SerializeField] private float damper = 2f;
+        [Tooltip("Optional. The string arm tied to this scale. When set, the reading is that string's tension " +
+                 "and the spring joint below is not added.")]
+        [SerializeField] private RopeArm tensionArm;
 
         //ReadingNewtons here is to compute from distance, not from the joint's solver force.
-        public float ReadingNewtons => springConstant * HorizontalDistanceToRing();
+        public float ReadingNewtons =>
+            tensionArm != null ? tensionArm.TensionNewtons : springConstant * HorizontalDistanceToRing();
 
         private void Awake()
         {
-            AddJointToRing();
+            if (tensionArm == null) AddJointToRing();
         }
 
         private float HorizontalDistanceToRing()

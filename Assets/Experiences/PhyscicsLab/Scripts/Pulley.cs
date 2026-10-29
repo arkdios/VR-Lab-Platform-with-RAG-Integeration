@@ -14,6 +14,8 @@ namespace PhysicsLab.Lab
         [SerializeField] private Rigidbody ring;
         [SerializeField] private Transform tableCenter;
         [SerializeField] private LabObject massObject;
+        [Tooltip("Optional. The Rigidbody of the hanging mass. When set, the string pulls the ring")]
+        [SerializeField] private Rigidbody massBody;
         [SerializeField] private float rimRadiusMetres = 0.4f;
         [Tooltip("How far outside the rim and how far below it.")]
         [SerializeField] private float massOutsetMetres = 0.07f;
@@ -41,10 +43,18 @@ namespace PhysicsLab.Lab
             _labObject = GetComponent<LabObject>();
         }
 
-        private void OnEnable() => PlaceOnRim();
+        private void OnEnable()
+        {
+            PlaceOnRim();
+            ApplyMassToBody();
+        }
 
         // PullRing on this function is for adding a force toward the pulley every physics step.
-        private void FixedUpdate() => PullRing();
+        // With a massBody the string does this job, so the fake pull is skipped.
+        private void FixedUpdate()
+        {
+            if (massBody == null) PullRing();
+        }
 
         public void SetAngle(float degrees)
         {
@@ -60,7 +70,14 @@ namespace PhysicsLab.Lab
             float clamped = Mathf.Clamp(kilograms, 0f, MaxMassKg);
             if (Mathf.Approximately(clamped, massKg)) return; // no change, no event
             massKg = clamped;
+            ApplyMassToBody();
             MassChanged?.Invoke(this);
+        }
+
+        // The hanging mass is a real body, so its weight comes from its Rigidbody mass.
+        private void ApplyMassToBody()
+        {
+            if (massBody != null) massBody.mass = Mathf.Max(massKg, 0.001f);
         }
 
         private Vector3 OutwardDirection()
@@ -76,6 +93,8 @@ namespace PhysicsLab.Lab
             // lines up with the string, and the axle stays tangent to the rim.
             transform.rotation = Quaternion.LookRotation(-outward, Vector3.up);
             transform.position = tableCenter.position + outward * rimRadiusMetres;
+            // With a massBody the mass is a child that hangs from the string, so it moves with the pulley.
+            if (massBody != null) return;
             massObject.transform.position =
                 transform.position + outward * massOutsetMetres + Vector3.down * massDropMetres;
         }

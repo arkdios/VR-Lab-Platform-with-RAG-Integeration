@@ -101,6 +101,7 @@ namespace PhysicsLab.Lab.EditorTools
         // Rotation tracking is off, so a held part stays upright.
         private static void ConfigureGrab(GameObject go, StringBuilder log)
         {
+            RemovePlainInteractable(go, log);
             XRGrabInteractable grab = go.GetComponent<XRGrabInteractable>();
             if (grab == null) grab = Undo.AddComponent<XRGrabInteractable>(go);
 
@@ -113,6 +114,16 @@ namespace PhysicsLab.Lab.EditorTools
             {
                 log.AppendLine($"  Warning: {go.name}: some XRGrabInteractable settings were not found. Set Movement Type = Velocity Tracking, Track Rotation off, Throw On Detach off by hand.");
             }
+        }
+
+        // Two interactables on one collider conflict, and LabObject would listen to the old one.
+        // So the old plain interactable goes before the grab interactable is added.
+        private static void RemovePlainInteractable(GameObject go, StringBuilder log)
+        {
+            XRSimpleInteractable plain = go.GetComponent<XRSimpleInteractable>();
+            if (plain == null) return;
+            Undo.DestroyObjectImmediate(plain);
+            log.AppendLine($"  {go.name}: old XRSimpleInteractable removed. The grab interactable replaces it.");
         }
 
         private static Material GetOrCreateGlowMaterial(StringBuilder log)

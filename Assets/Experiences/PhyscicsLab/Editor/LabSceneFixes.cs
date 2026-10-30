@@ -33,6 +33,7 @@ namespace PhysicsLab.Lab.EditorTools
             SpringScale scale = PrepareSpringScale(log);
             FixCanvasScaler(log);
             AddScreenGate(log);
+            FixCameraLayers(log);
             return scale != null;
         }
 
@@ -84,6 +85,23 @@ namespace PhysicsLab.Lab.EditorTools
             box.center = target.transform.InverseTransformPoint(bounds.center);
             box.size = new Vector3(footprint / scale.x, bounds.size.y / scale.y, footprint / scale.z);
             log.AppendLine($"  Spring scale: Box Collider added, world size {footprint:F3} x {bounds.size.y:F3} x {footprint:F3} m.");
+        }
+
+        // The lab parts sit on the LabFixed and LabBody layers. A camera that does not draw those layers
+        // shows an empty room in the Game view, while the Scene view (it draws every layer) looks fine.
+        private static void FixCameraLayers(StringBuilder log)
+        {
+            int labLayers = LayerMask.GetMask("LabFixed", "LabBody");
+            foreach (Camera cam in Object.FindObjectsByType<Camera>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            {
+                bool drawsDefaultLayer = (cam.cullingMask & 1) != 0;   // the stereo output camera draws only its own layer
+                if (!drawsDefaultLayer || (cam.cullingMask & labLayers) == labLayers) continue;
+
+                Undo.RecordObject(cam, "Camera draws lab layers");
+                cam.cullingMask |= labLayers;
+                EditorUtility.SetDirty(cam);
+                log.AppendLine($"  {cam.name}: now draws LabFixed and LabBody (table, pulleys, masses, ring).");
+            }
         }
 
         private static void FixCanvasScaler(StringBuilder log)

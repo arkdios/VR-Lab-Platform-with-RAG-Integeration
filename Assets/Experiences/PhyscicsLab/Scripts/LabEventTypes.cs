@@ -15,5 +15,7 @@ namespace PhysicsLab.Lab
         public const string MeasurementRecorded = "measurement_recorded";
         public const string ScaleMoved = "scale_moved";
         public const string ProgressRestored = "progress_restored";
+        public const string Connected = "connected";
+        public const string Disconnected = "disconnected";
     }
 }

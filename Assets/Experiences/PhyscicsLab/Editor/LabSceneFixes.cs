@@ -22,11 +22,18 @@ namespace PhysicsLab.Lab.EditorTools
         private static void Run()
         {
             var log = new StringBuilder("[LabSceneFixes]\n");
-            PrepareSpringScale(log);
-            FixCanvasScaler(log);
-            AddScreenGate(log);
+            RunAll(log);
             EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());
             Debug.Log(log.ToString());
+        }
+
+        /// <summary>Scale fix, Canvas Scaler, screen gate. Returns true when the spring scale was found.</summary>
+        public static bool RunAll(StringBuilder log)
+        {
+            SpringScale scale = PrepareSpringScale(log);
+            FixCanvasScaler(log);
+            AddScreenGate(log);
+            return scale != null;
         }
 
         /// <summary>

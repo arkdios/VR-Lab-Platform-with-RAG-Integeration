@@ -30,7 +30,7 @@ namespace PhysicsLab.Lab.EditorTools
         private static void Build()
         {
             var log = new StringBuilder("[LabStringBuilder]\n");
-            bool ok = TryBuild(log);
+            bool ok = Run(log);
             if (!ok)
             {
                 Debug.LogError(log.ToString());
@@ -40,7 +40,8 @@ namespace PhysicsLab.Lab.EditorTools
             Debug.Log(log.ToString());
         }
 
-        private static bool TryBuild(StringBuilder log)
+        /// <summary>Builds the four arms. Returns false (and logs why) when the scene is missing something.</summary>
+        public static bool Run(StringBuilder log)
         {
             Transform equipment = LabSceneFixes.FindSceneObject("LabEquipments");
             if (equipment == null) return Fail(log, "no object named LabEquipments.");
@@ -84,9 +85,10 @@ namespace PhysicsLab.Lab.EditorTools
             var ringColliders = new List<Collider>(ring.GetComponentsInChildren<Collider>());
             Collider tableCollider = table.GetComponent<Collider>();
 
-            RopeArm arm1 = BuildMassArm(strings, "Arm_Pulley1", pulley1, ring, ringBody, center, ringRadius,
+            float tableRadius = table.GetComponent<Renderer>() != null ? table.GetComponent<Renderer>().bounds.extents.x : 0.45f;
+            RopeArm arm1 = BuildMassArm(strings, "Arm_Pulley1", pulley1, ring, ringBody, center, ringRadius, tableRadius,
                                         ringColliders, tableCollider, stringMaterial, +1, log);
-            RopeArm arm2 = BuildMassArm(strings, "Arm_Pulley2", pulley2, ring, ringBody, center, ringRadius,
+            RopeArm arm2 = BuildMassArm(strings, "Arm_Pulley2", pulley2, ring, ringBody, center, ringRadius, tableRadius,
                                         ringColliders, tableCollider, stringMaterial, -1, log);
 
             RopeArm arm3 = MakeArm(strings, "Arm_Scale", stringMaterial);
@@ -166,11 +168,17 @@ namespace PhysicsLab.Lab.EditorTools
         // ---------- arms ----------
 
         private static RopeArm BuildMassArm(Transform strings, string armName, Pulley pulley, Transform ring,
-            Rigidbody ringBody, Transform center, float ringRadius, List<Collider> ringColliders,
+            Rigidbody ringBody, Transform center, float ringRadius, float tableRadius, List<Collider> ringColliders,
             Collider tableCollider, Material material, int side, StringBuilder log)
         {
             LabObject massObject = ReadReference<LabObject>(pulley, "massObject");
-            Transform groove = MakeGroovePoint(pulley, center);
+
+            // The mass must hang outside the table edge: table radius + half the mass width + 1 cm.
+            Renderer massRenderer = massObject.GetComponent<Renderer>();
+            float massHalfWidth = massRenderer != null
+                ? Mathf.Max(massRenderer.bounds.extents.x, massRenderer.bounds.extents.z)
+                : 0.02f;
+            Transform groove = MakeGroovePoint(pulley, center, tableRadius + massHalfWidth + 0.01f);
             Rigidbody massBody = PrepareMass(massObject, pulley);
             SetObject(pulley, "massBody", massBody);
 
@@ -192,8 +200,8 @@ namespace PhysicsLab.Lab.EditorTools
             return arm;
         }
 
-        // The top of the pulley wheel, a little outside, where the string turns downward.
-        private static Transform MakeGroovePoint(Pulley pulley, Transform center)
+        // The top of the pulley wheel, moved outward so the hanging string is at hangRadius from the table centre.
+        private static Transform MakeGroovePoint(Pulley pulley, Transform center, float hangRadius)
         {
             Transform groove = GetOrCreateChild(pulley.transform, "GroovePoint");
             Renderer renderer = pulley.GetComponent<Renderer>();
@@ -203,7 +211,9 @@ namespace PhysicsLab.Lab.EditorTools
 
             Vector3 outward = pulley.transform.position - center.position;
             outward.y = 0f;
-            float reach = renderer != null ? 0.5f * Mathf.Max(renderer.bounds.extents.x, renderer.bounds.extents.z) : 0.01f;
+            Vector3 flatTop = top - center.position;
+            flatTop.y = 0f;
+            float reach = Mathf.Max(0.005f, hangRadius - flatTop.magnitude); // how far past the wheel top
             groove.position = top + outward.normalized * reach;
             return groove;
         }

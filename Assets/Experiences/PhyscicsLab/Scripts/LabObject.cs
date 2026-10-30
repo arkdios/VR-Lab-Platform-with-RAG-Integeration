@@ -14,10 +14,18 @@ namespace PhysicsLab.Lab
         [Tooltip("Stable id sent to the backend: ring, pulley-1, mass-2, spring-scale.")]
         [SerializeField] private string objectId;
 
+        [Tooltip("Tick for parts that are dragged in 3D (the hanging masses). The mouse wheel then pushes and " +
+         "pulls them. Unticked parts only slide on their table plane.")]
+        [SerializeField] private bool freeDrag;
+
         private bool _isGrabbable;
 
         public string ObjectId => objectId;
         public bool IsGrabbable => _isGrabbable;
+        public bool FreeDrag => freeDrag;
+
+        /// <summary>True while a hand or the mouse holds this object.</summary>
+        public bool IsHeld { get; private set; }
 
         /// <summary>
         /// Raised when the pointer starts (true) or stops (false) pointing at this object.
@@ -56,7 +64,11 @@ namespace PhysicsLab.Lab
         /// <summary>
         /// Called by input code when a grab starts or ends.
         /// </summary>
-        public void ReportHeld(bool held) => HeldChanged?.Invoke(this, held);
+        public void ReportHeld(bool held)
+        {
+            IsHeld = held;
+            HeldChanged?.Invoke(this, held);
+        }
 
         /// <summary>
         /// Called by input code when a non-grabbable object is selected.

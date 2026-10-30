@@ -71,6 +71,20 @@ namespace PhysicsLab.Lab
 
             if (mouse.leftButton.wasPressedThisFrame) PressOnHovered();
             if (mouse.leftButton.wasReleasedThisFrame) EndDrag();
+            PushPullWithWheel(mouse);
+        }
+
+        /// <summary>
+        /// While a Free Drag part is held, the mouse wheel moves it closer or farther: 0.1 m per notch,
+        /// between 0.4 m and the reach.
+        /// </summary>
+        private void PushPullWithWheel(Mouse mouse)
+        {
+            if (_dragged == null || !_dragged.FreeDrag) return;
+
+            float wheel = mouse.scroll.ReadValue().y;
+            if (Mathf.Approximately(wheel, 0f)) return;
+            _dragDistance = Mathf.Clamp(_dragDistance + Mathf.Sign(wheel) * 0.1f, 0.4f, reach);
         }
 
         /// <summary>
@@ -111,7 +125,8 @@ namespace PhysicsLab.Lab
         {
             Ray ray = viewCamera.ViewportPointToRay(ScreenCenter);
             Vector3 aimPoint = ray.GetPoint(_dragDistance);
-            aimPoint.y = _draggedBody.position.y; // stay on the table plane
+            // Parts with Free Drag ticked (the masses) move in 3D. The others stay on the table plane.
+            if (!_dragged.FreeDrag) aimPoint.y = _draggedBody.position.y;
 
             Vector3 velocity = (aimPoint - _draggedBody.position) * dragGain;
             // ClampMagnitude caps the speed since a fast mouse flick must not throw the scale across the table.

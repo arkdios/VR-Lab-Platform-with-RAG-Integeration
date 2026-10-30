@@ -65,6 +65,18 @@ namespace PhysicsLab.Lab
             AngleChanged?.Invoke(this);
         }
 
+        /// <summary>
+        /// Called when the pulley was moved by hand and clamped to a table spot. It updates the angle and
+        /// raises AngleChanged, but does not move anything (the clamp already put the pulley in place).
+        /// </summary>
+        public void SetAngleFromPosition(float degrees)
+        {
+            float wrapped = Mathf.Repeat(degrees, 360f);
+            if (Mathf.Approximately(wrapped, angleDegrees)) return; // no change, no event
+            angleDegrees = wrapped;
+            AngleChanged?.Invoke(this);
+        }
+
         public void SetMass(float kilograms)
         {
             float clamped = Mathf.Clamp(kilograms, 0f, MaxMassKg);

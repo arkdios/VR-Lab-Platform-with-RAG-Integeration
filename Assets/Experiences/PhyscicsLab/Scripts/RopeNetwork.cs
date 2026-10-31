@@ -11,6 +11,8 @@ namespace PhysicsLab.Lab.Rope
     [DefaultExecutionOrder(200)] // after DesktopPointer and TableBounds, which also run in FixedUpdate
     public class RopeNetwork : MonoBehaviour
     {
+        private const int LengthFixPasses = 8;               // position fix passes per physics step
+        private const float StartStretchWarnMetres = 0.01f;  // a string this much too long at start gets a warning
         [SerializeField] private RopeArm[] arms;
         [Tooltip("Solver passes per step. 12 is enough for four arms on one ring.")]
         [SerializeField, Range(4, 30)] private int iterations = 12;
@@ -22,7 +24,9 @@ namespace PhysicsLab.Lab.Rope
         private Rigidbody[] _bodies;
         private RopeBodyState[] _states;
         private Vector3[] _lastPositions;
+        private TableBounds[] _limits;
         private RopeLink[] _links;
+        private bool _startChecked;
 
         private void Awake()
         {
@@ -54,6 +58,7 @@ namespace PhysicsLab.Lab.Rope
             _bodies = unique.ToArray();
             _states = new RopeBodyState[_bodies.Length];
             _lastPositions = new Vector3[_bodies.Length];
+            _limits = new TableBounds[_bodies.Length];
             _links = new RopeLink[activeArms.Count];
 
             for (int i = 0; i < _bodies.Length; i++)
@@ -62,6 +67,7 @@ namespace PhysicsLab.Lab.Rope
                 _bodies[i].interpolation = RigidbodyInterpolation.None;
                 _bodies[i].sleepThreshold = 0f;
                 _lastPositions[i] = _bodies[i].position;
+                _limits[i] = _bodies[i].GetComponent<TableBounds>();
             }
             for (int k = 0; k < activeArms.Count; k++)
             {
@@ -80,9 +86,14 @@ namespace PhysicsLab.Lab.Rope
             for (int i = 0; i < _bodies.Length; i++) _states[i] = ReadState(i, dt);
             for (int k = 0; k < arms.Length; k++) arms[k].RefreshLink();
 
+            if (!_startChecked) WarnIfStartsTooLong();
+
             RopeSolver.Solve(_states, _links, _links.Length, dt, iterations, true);
+            // Speeds alone leave a drift. This closes it, so a string never stays longer than its length.
+            RopeSolver.ProjectLengths(_states, _links, _links.Length, LengthFixPasses);
 
             for (int i = 0; i < _bodies.Length; i++) WriteVelocity(i);
+            for (int i = 0; i < _bodies.Length; i++) WritePosition(i);
             for (int k = 0; k < arms.Length; k++) arms[k].AfterSolve(dt);
         }
 
@@ -95,8 +106,9 @@ namespace PhysicsLab.Lab.Rope
             for (int i = 0; i < arms.Length; i++)
             {
                 string state = arms[i].IsTaut ? "taut" : "slack";
-                GUI.Label(new Rect(10f, 10f + 20f * i, 420f, 20f),
-                          $"{arms[i].name}: {arms[i].TensionNewtons:0.00} N ({state})");
+                float path = RopeSolver.PathLength(arms[i].Link);
+                GUI.Label(new Rect(10f, 10f + 20f * i, 560f, 20f),
+                          $"{arms[i].name}: {arms[i].TensionNewtons:0.00} N ({state}), path {path:0.000} of {arms[i].LengthMetres:0.000} m");
             }
         }
 
@@ -112,7 +124,14 @@ namespace PhysicsLab.Lab.Rope
             // A kinematic body (headset grab) or a fully frozen body (scale left in place) cannot be moved by the string.
             bool fixedInPlace = body.isKinematic || axes == Vector3.zero;
 
-            var state = new RopeBodyState { freeAxes = axes };
+            var state = new RopeBodyState { freeAxes = axes, position = body.position };
+            TableBounds limit = _limits[index];
+            if (limit != null)
+            {
+                state.hasLimit = true;
+                state.limitCenter = limit.Center;
+                state.limitRadius = limit.MaxRadiusMetres;
+            }
             state.inverseMass = fixedInPlace ? 0f : 1f / Mathf.Max(body.mass, 1e-4f);
             state.gravity = body.useGravity && !fixedInPlace ? Vector3.Scale(Physics.gravity, axes) : Vector3.zero;
 
@@ -128,6 +147,27 @@ namespace PhysicsLab.Lab.Rope
         {
             if (_states[index].inverseMass <= 0f) return;
             _bodies[index].linearVelocity = Vector3.Scale(_states[index].velocity, _states[index].freeAxes);
+        }
+
+        private void WritePosition(int index)
+        {
+            if (_states[index].inverseMass <= 0f) return;
+            if ((_states[index].position - _bodies[index].position).sqrMagnitude < 1e-10f) return;
+            _bodies[index].position = _states[index].position;
+        }
+
+        // At start every string should be at or under its length. A saved progress file can break that, because it
+        // puts the ring and the scale back at old places. Both ends may be pinned then, so no code can fix it.
+        private void WarnIfStartsTooLong()
+        {
+            _startChecked = true;
+            foreach (RopeArm arm in arms)
+            {
+                float tooLong = RopeSolver.PathLength(arm.Link) - arm.LengthMetres;
+                if (tooLong <= StartStretchWarnMetres) continue;
+                Debug.LogWarning($"[RopeNetwork] {arm.name} starts {tooLong:F2} m too long. A saved progress file may have moved " +
+                                 "the ring or the spring scale. Use Lab > Delete saved progress, then press Play again.", arm);
+            }
         }
 
         private static void AddOnce(List<Rigidbody> list, Rigidbody body)

@@ -71,8 +71,11 @@ namespace PhysicsLab.Lab.Rope
         /// <summary>Called by RopeNetwork every physics step, before the solver runs.</summary>
         public void RefreshLink()
         {
-            Link.pointA = ringAnchor.position;
-            Link.pointB = endAnchor.position;
+            // The knot offset (anchor minus body) lets the length fix move the knot together with its body.
+            Link.offsetA = ringAnchor.position - RingBody.transform.position;
+            Link.offsetB = endAnchor.position - EndBody.transform.position;
+            Link.pointA = RingBody.position + Link.offsetA;
+            Link.pointB = EndBody.position + Link.offsetB;
             Link.length = lengthMetres;
             if (guide != null) _guidePoints[0] = guide.position;
         }

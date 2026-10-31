@@ -21,7 +21,8 @@ namespace PhysicsLab.Lab.EditorTools
             bool ok = LabSceneFixes.RunAll(log)
                       && LabPhysicsRepair.Run(log)
                       && LabStringBuilder.Run(log)
-                      && LabConnectBuilder.Run(log);
+                      && LabConnectBuilder.Run(log)
+                      && LabCursorBuilder.Run(log);
 
             if (ok)
             {

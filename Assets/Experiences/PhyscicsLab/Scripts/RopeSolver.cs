@@ -19,6 +19,18 @@ namespace PhysicsLab.Lab.Rope
 
         /// <summary>Acceleration that PhysX will add this step (already 0 on frozen axes, 0 if gravity is off).</summary>
         public Vector3 gravity;
+
+        /// <summary>World position of the body in metres. The length fix and the circle limit use it.</summary>
+        public Vector3 position;
+
+        /// <summary>True when the body must stay inside a flat circle (the ring at the post, a part at the table reach).</summary>
+        public bool hasLimit;
+
+        /// <summary>Centre of that circle (only x and z count).</summary>
+        public Vector3 limitCenter;
+
+        /// <summary>Radius of that circle in metres.</summary>
+        public float limitRadius;
     }
 
     /// <summary>
@@ -33,6 +45,10 @@ namespace PhysicsLab.Lab.Rope
         public Vector3 pointB;
         public Vector3[] guides = new Vector3[0];
         public float length = 1f;
+
+        /// <summary>Where the rope is tied, minus the body position. It lets the length fix move the knot with its body.</summary>
+        public Vector3 offsetA;
+        public Vector3 offsetB;
 
         /// <summary>Total impulse (N*s) pushed into the rope this step. Always 0 or negative: a string only pulls.</summary>
         public float impulseSum;
@@ -52,6 +68,7 @@ namespace PhysicsLab.Lab.Rope
     {
         private const float MinLength = 1e-6f;
         private const float OverstretchFix = 0.2f; // share of an overstretch removed per step
+        private const float ProjectionToleranceMetres = 0.0002f; // a rope this much too long is left alone
 
         /// <summary>Total length of the rope path: A to the guides to B.</summary>
         public static float PathLength(RopeLink link)
@@ -107,6 +124,9 @@ namespace PhysicsLab.Lab.Rope
                     link.impulseSum = next;
                     ApplyImpulse(bodies, link, dirA[k], dirB[k], delta);
                 }
+
+                // The post (or the table reach) pushes back, so a taut rope cannot drag the ring away through it.
+                for (int i = 0; i < bodies.Length; i++) LimitSpeedToCircle(ref bodies[i], dt);
             }
 
             // 4. Tension = impulse per second. Then undo the gravity prediction (PhysX adds it again).
@@ -115,6 +135,78 @@ namespace PhysicsLab.Lab.Rope
             {
                 if (bodies[i].inverseMass > 0f) bodies[i].velocity -= bodies[i].gravity * dt;
             }
+        }
+
+        /// <summary>
+        /// Keeps a limited body inside its circle for the coming step. If the body would end the step outside,
+        /// its speed is changed so that it ends on the circle edge instead. It slides along the edge, never through it.
+        /// </summary>
+        private static void LimitSpeedToCircle(ref RopeBodyState body, float dt)
+        {
+            if (!body.hasLimit || body.inverseMass <= 0f) return;
+
+            Vector3 flat = new Vector3(1f, 0f, 1f);
+            Vector3 offset = Vector3.Scale(body.position - body.limitCenter, flat);
+            Vector3 flatVelocity = Vector3.Scale(body.velocity, flat);
+
+            Vector3 offsetAfterStep = offset + flatVelocity * dt;
+            float distanceAfterStep = offsetAfterStep.magnitude;
+            if (distanceAfterStep <= body.limitRadius) return;
+
+            Vector3 onEdge = offsetAfterStep / distanceAfterStep * body.limitRadius;
+            body.velocity += (onEdge - offset) / dt - flatVelocity;
+        }
+
+        /// <summary>
+        /// Position fix, run after the speeds are solved. Moves bodies so that no rope is longer than its length.
+        /// Speeds alone leave a drift, and a large one when the body that should give way cannot move
+        /// (the ring held by the post, a part held by a hand). This closes the gap every step.
+        /// Needs position, offsetA and offsetB to be filled in.
+        /// </summary>
+        public static void ProjectLengths(RopeBodyState[] bodies, RopeLink[] links, int linkCount, int passes)
+        {
+            for (int pass = 0; pass < passes; pass++)
+            {
+                for (int k = 0; k < linkCount; k++) ProjectLink(bodies, links[k]);
+                for (int i = 0; i < bodies.Length; i++) PushInsideCircle(ref bodies[i]);
+            }
+        }
+
+        private static void ProjectLink(RopeBodyState[] bodies, RopeLink link)
+        {
+            RopeBodyState a = bodies[link.bodyA];
+            RopeBodyState b = bodies[link.bodyB];
+            link.pointA = a.position + link.offsetA;
+            link.pointB = b.position + link.offsetB;
+
+            float overshoot = PathLength(link) - link.length;
+            link.overshoot = overshoot;
+            if (overshoot <= ProjectionToleranceMetres) return;
+
+            Vector3 nextAfterA = link.guides.Length > 0 ? link.guides[0] : link.pointB;
+            Vector3 lastBeforeB = link.guides.Length > 0 ? link.guides[link.guides.Length - 1] : link.pointA;
+            Vector3 moveA = Vector3.Scale(Direction(link.pointA - nextAfterA), a.freeAxes); // this way makes the rope longer
+            Vector3 moveB = Vector3.Scale(Direction(link.pointB - lastBeforeB), b.freeAxes);
+
+            float weight = a.inverseMass * moveA.sqrMagnitude + b.inverseMass * moveB.sqrMagnitude;
+            if (weight <= 0f) return; // nobody can give way
+
+            float share = overshoot / weight;
+            a.position -= moveA * (a.inverseMass * share);
+            b.position -= moveB * (b.inverseMass * share);
+            bodies[link.bodyA] = a;
+            bodies[link.bodyB] = b;
+            link.overshoot = 0f;
+        }
+
+        private static void PushInsideCircle(ref RopeBodyState body)
+        {
+            if (!body.hasLimit || body.inverseMass <= 0f) return;
+
+            Vector3 offset = Vector3.Scale(body.position - body.limitCenter, new Vector3(1f, 0f, 1f));
+            float distance = offset.magnitude;
+            if (distance <= body.limitRadius) return;
+            body.position -= offset / distance * (distance - body.limitRadius);
         }
 
         private static void PrepareLink(RopeBodyState[] bodies, RopeLink link, float dt,

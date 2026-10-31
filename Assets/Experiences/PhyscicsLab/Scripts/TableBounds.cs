@@ -14,6 +14,12 @@ namespace PhysicsLab.Lab
 
         private Rigidbody _body;
 
+        /// <summary>The centre of the circle, in world space.</summary>
+        public Vector3 Center => tableCenter.position;
+
+        /// <summary>The radius of the circle in metres.</summary>
+        public float MaxRadiusMetres => maxRadiusMetres;
+
         private void Awake()
         {
             _body = GetComponent<Rigidbody>();

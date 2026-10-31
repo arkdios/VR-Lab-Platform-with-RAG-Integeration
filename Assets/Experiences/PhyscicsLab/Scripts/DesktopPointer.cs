@@ -25,6 +25,38 @@ namespace PhysicsLab.Lab
         private Rigidbody _draggedBody;
         private float _dragDistance;
 
+        [Tooltip("How forgiving the aim is, in metres. A thin ray misses small parts.")]
+        [SerializeField] private float pickRadius = 0.03f;
+        [Tooltip("A lab part this far behind the first surface still counts. It lets you pick parts that sit on the table.")]
+        [SerializeField] private float pickDepthMargin = 0.15f;
+
+        private const float DefaultAimDistance = 1.2f; // where the aim point sits when the ray hits nothing
+
+        private readonly RaycastHit[] _hits = new RaycastHit[16];
+        private bool _castHit;
+        private Vector3 _castPoint;
+        private Vector3 _castNormal;
+
+        /// <summary>True while the mouse is captured. This is when the pointer works (Tab or a click turns it on).</summary>
+        public bool IsAiming => Cursor.lockState == CursorLockMode.Locked;
+
+        public LabObject Hovered => _hovered;
+
+        public LabObject Dragged => _dragged;
+
+        /// <summary>The point under the aim: on the held part, or where the ray lands, or in the air in front of the camera.</summary>
+        public Vector3 AimPoint
+        {
+            get
+            {
+                if (_dragged != null && _draggedBody != null) return _draggedBody.position;
+                if (_castHit) return _castPoint;
+                return viewCamera.ViewportPointToRay(ScreenCenter).GetPoint(DefaultAimDistance);
+            }
+        }
+
+        public Vector3 AimNormal => _castHit ? _castNormal : -viewCamera.transform.forward;
+
         /// <summary>
         /// Ends any drag and clears hover.
         /// </summary>
@@ -133,17 +165,55 @@ namespace PhysicsLab.Lab
             _draggedBody.linearVelocity = Vector3.ClampMagnitude(velocity, maxDragSpeed);
         }
 
+        /// <summary>
+        /// Sweeps a small sphere along the aim ray, because a thin ray misses small parts. The nearest lab part wins,
+        /// as long as it is not far behind the first surface hit. That lets you pick parts that sit on the table.
+        /// </summary>
         private LabObject RaycastLabObject(out float distance)
         {
             Ray ray = viewCamera.ViewportPointToRay(ScreenCenter);
-            if (Physics.Raycast(ray, out RaycastHit hit, reach))
+            int count = Physics.SphereCastNonAlloc(ray, pickRadius, _hits, reach);
+
+            RaycastHit first = default(RaycastHit);
+            float firstDistance = float.MaxValue;
+            for (int i = 0; i < count; i++)
             {
-                distance = hit.distance;
-                return hit.collider.GetComponentInParent<LabObject>();
+                if (_hits[i].distance <= 0f || _hits[i].distance >= firstDistance) continue;
+                first = _hits[i];
+                firstDistance = first.distance;
             }
 
-            distance = 0f;
-            return null;
+            _castHit = firstDistance < float.MaxValue;
+            _castPoint = first.point;
+            _castNormal = first.normal;
+
+            LabObject part = NearestLabPart(count, firstDistance + pickDepthMargin, out RaycastHit partHit);
+            if (part != null)
+            {
+                _castPoint = partHit.point;
+                _castNormal = partHit.normal;
+            }
+
+            distance = part != null ? partHit.distance : 0f;
+            return part;
+        }
+
+        private LabObject NearestLabPart(int count, float farthest, out RaycastHit best)
+        {
+            best = default(RaycastHit);
+            LabObject part = null;
+            for (int i = 0; i < count; i++)
+            {
+                RaycastHit hit = _hits[i];
+                bool nearer = hit.distance > 0f && hit.distance <= farthest && (part == null || hit.distance < best.distance);
+                if (!nearer) continue;
+
+                LabObject candidate = hit.collider.GetComponentInParent<LabObject>();
+                if (candidate == null) continue;
+                part = candidate;
+                best = hit;
+            }
+            return part;
         }
 
         private void SetHovered(LabObject next)

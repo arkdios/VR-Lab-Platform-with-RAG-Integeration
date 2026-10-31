@@ -170,7 +170,10 @@ namespace PhysicsLab.Lab.Rope
             EndBody = endAnchor.GetComponentInParent<Rigidbody>();
             if (RingBody == null || EndBody == null)
             {
-                Debug.LogError("[RopeArm] Both anchors need a Rigidbody on themselves or a parent.", this);
+                // Say which anchor is the problem. A switched-off object hides its Rigidbody from GetComponentInParent.
+                Transform bad = RingBody == null ? ringAnchor : endAnchor;
+                string why = bad.gameObject.activeInHierarchy ? "has no Rigidbody on it or a parent" : "is switched off in the Hierarchy";
+                Debug.LogError($"[RopeArm] {name}: anchor '{bad.name}' {why}.", this);
                 return false;
             }
             return true;

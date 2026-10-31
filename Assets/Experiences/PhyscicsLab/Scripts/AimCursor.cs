@@ -187,7 +187,11 @@ namespace PhysicsLab.Lab
             Measure();
         }
 
-        public void SetActive(bool active) => _instance.SetActive(active);
+        // The hand can already be destroyed when Play stops, so check before touching it.
+        public void SetActive(bool active)
+        {
+            if (_instance != null) _instance.SetActive(active);
+        }
 
         public void Destroy() => Object.Destroy(_instance);
 

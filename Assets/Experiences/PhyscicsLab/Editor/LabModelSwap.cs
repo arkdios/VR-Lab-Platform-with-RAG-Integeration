@@ -191,7 +191,9 @@ namespace PhysicsLab.Lab.EditorTools
             if (stack == null) return;
 
             Transform weights = LabSerialized.ReadReference<Transform>(stack, "weights");
-            if (weights != null)
+            // In this scene the "weights" field points at the mass itself. Hiding it would switch off the whole
+            // mass (its Rigidbody and the string end). So only hide a stack that is a separate child.
+            if (weights != null && !mass.IsChildOf(weights))
             {
                 Undo.RecordObject(weights.gameObject, "Hide weight stack");
                 weights.gameObject.SetActive(false);

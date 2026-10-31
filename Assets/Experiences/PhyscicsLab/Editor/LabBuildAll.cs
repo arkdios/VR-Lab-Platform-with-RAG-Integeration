@@ -22,7 +22,8 @@ namespace PhysicsLab.Lab.EditorTools
                       && LabPhysicsRepair.Run(log)
                       && LabStringBuilder.Run(log)
                       && LabConnectBuilder.Run(log)
-                      && LabCursorBuilder.Run(log);
+                      && LabCursorBuilder.Run(log)
+                      && LabPropsBuilder.Run(log);
 
             if (ok)
             {

@@ -16,6 +16,42 @@ namespace PhysicsLab.Lab.EditorTools
             return property != null ? property.objectReferenceValue as T : null;
         }
 
+        /// <summary>Sets a bool field by name. Returns false when the field does not exist.</summary>
+        public static bool SetBool(Object owner, string field, bool value)
+        {
+            var serialized = new SerializedObject(owner);
+            SerializedProperty property = serialized.FindProperty(field);
+            if (property == null) return false;
+
+            property.boolValue = value;
+            serialized.ApplyModifiedProperties();
+            return true;
+        }
+
+        /// <summary>Sets a text field by name. Returns false when the field does not exist.</summary>
+        public static bool SetString(Object owner, string field, string value)
+        {
+            var serialized = new SerializedObject(owner);
+            SerializedProperty property = serialized.FindProperty(field);
+            if (property == null) return false;
+
+            property.stringValue = value;
+            serialized.ApplyModifiedProperties();
+            return true;
+        }
+
+        /// <summary>Sets an enum field by name, by its position in the list. Returns false when the field does not exist.</summary>
+        public static bool SetEnum(Object owner, string field, int index)
+        {
+            var serialized = new SerializedObject(owner);
+            SerializedProperty property = serialized.FindProperty(field);
+            if (property == null) return false;
+
+            property.enumValueIndex = index;
+            serialized.ApplyModifiedProperties();
+            return true;
+        }
+
         public static bool SetObject(Object owner, string field, Object value)
         {
             var serialized = new SerializedObject(owner);

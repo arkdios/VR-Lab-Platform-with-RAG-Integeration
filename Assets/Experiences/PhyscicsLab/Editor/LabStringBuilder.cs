@@ -18,7 +18,7 @@ namespace PhysicsLab.Lab.EditorTools
     /// </summary>
     public static class LabStringBuilder
     {
-        private const float MassHangDropMetres = 0.45f;   // how far a mass hangs below the pulley
+        private const float MassHangDropMetres = 0.12f;   // how far a mass hangs below the pulley
         private const float ScaleArmMetres = 0.45f;       // string length from the ring to the scale hook
         private const float FreeArmMetres = 0.5f;
         private const float PostClearanceMetres = 0.01f;  // how far the ring can move before it touches the post

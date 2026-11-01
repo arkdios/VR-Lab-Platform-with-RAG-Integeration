@@ -52,6 +52,7 @@ namespace PhysicsLab.Lab.EditorTools
             int solid = 0;
             foreach (Transform prop in props)   // direct children only: each one is a prop
             {
+                if (!prop.gameObject.activeSelf) continue;   // a hidden copy needs nothing
                 if (IsFurniture(prop.name))
                 {
                     MakeSolid(prop, log);
@@ -79,6 +80,8 @@ namespace PhysicsLab.Lab.EditorTools
 
             GameObject go = prop.gameObject;
             FitBox(go, local);
+            int removed = RemoveOtherColliders(go);
+            if (removed > 0) log.AppendLine($"  {prop.name}: {removed} old collider(s) removed (a moving part may only use the box).");
             ConfigureBody(go, MassFromName(prop.name));
 
             LabObject labObject = GetOrAdd<LabObject>(go);
@@ -139,7 +142,31 @@ namespace PhysicsLab.Lab.EditorTools
             return propName.StartsWith("Ring") ? RingMassKg : DefaultMassKg;
         }
 
+        // A moving part may only use simple convex shapes. The ring carried an old mesh collider, which physics
+        // refuses on a moving part, and the old shapes made parts float. The fitted box is the only collider left.
+        private static int RemoveOtherColliders(GameObject go)
+        {
+            BoxCollider own = go.GetComponent<BoxCollider>();
+            int removed = 0;
+            foreach (Collider collider in go.GetComponentsInChildren<Collider>(true))
+            {
+                if (collider == own) continue;
+                Undo.DestroyObjectImmediate(collider);
+                removed++;
+            }
+            return removed;
+        }
+
         // ---------- furniture ----------
+
+        // The old hand-made boxes were taller and wider than the real furniture (the table box stood 20 cm above the
+        // real table top), so parts floated on them or started inside them. The mesh colliders replace them.
+        private static int RemoveBoxColliders(Transform furniture)
+        {
+            BoxCollider[] boxes = furniture.GetComponentsInChildren<BoxCollider>(true);
+            foreach (BoxCollider box in boxes) Undo.DestroyObjectImmediate(box);
+            return boxes.Length;
+        }
 
         private static bool IsFurniture(string propName)
         {
@@ -154,6 +181,7 @@ namespace PhysicsLab.Lab.EditorTools
         // There is no Rigidbody, so furniture never moves: physics treats it as fixed.
         private static void MakeSolid(Transform furniture, StringBuilder log)
         {
+            int removed = RemoveBoxColliders(furniture);
             int added = 0;
             foreach (MeshFilter filter in furniture.GetComponentsInChildren<MeshFilter>())
             {
@@ -162,7 +190,7 @@ namespace PhysicsLab.Lab.EditorTools
                 collider.sharedMesh = filter.sharedMesh;
                 added++;
             }
-            log.AppendLine($"  {furniture.name}: solid furniture, {added} mesh collider(s) added.");
+            log.AppendLine($"  {furniture.name}: solid furniture, {removed} old box collider(s) removed, {added} mesh collider(s) added.");
         }
 
         // ---------- helpers ----------

@@ -92,6 +92,18 @@ namespace PhysicsLab.Lab
             if (massBody != null) massBody.mass = Mathf.Max(massKg, 0.001f);
         }
 
+        /// <summary>
+        /// The turn this pulley should have at a spot on the table: the same turn PlaceOnRim uses.
+        /// ConnectPart calls it while the pulley is held, so the pulley keeps facing the table centre.
+        /// </summary>
+        public Quaternion FacingRotation(Vector3 position)
+        {
+            Vector3 outward = position - tableCenter.position;
+            outward.y = 0f;
+            if (outward.sqrMagnitude < 1e-6f) return transform.rotation; // right over the centre: keep the turn
+            return Quaternion.LookRotation(-outward.normalized, Vector3.up);
+        }
+
         private Vector3 OutwardDirection()
         {
             float radians = angleDegrees * Mathf.Deg2Rad;

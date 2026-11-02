@@ -97,17 +97,21 @@ namespace PhysicsLab.Lab.Rope
             for (int k = 0; k < arms.Length; k++) arms[k].AfterSolve(dt);
         }
 
+        private const float TensionTextTop = 100f;   // below the frame-rate label, so the two never overlap
+
         // Debug text so you can check the tensions against the slides. Not drawn in a release build.
         private void OnGUI()
         {
             if (!showTensionsOnScreen || arms == null) return;
             if (!Application.isEditor && !Debug.isDebugBuild) return;
 
+            GUI.Box(new Rect(6f, TensionTextTop - 4f, 576f, 20f * arms.Length + 8f), GUIContent.none);   // dark box, so the text can be read
+
             for (int i = 0; i < arms.Length; i++)
             {
                 string state = arms[i].IsTaut ? "taut" : "slack";
                 float path = RopeSolver.PathLength(arms[i].Link);
-                GUI.Label(new Rect(10f, 10f + 20f * i, 560f, 20f),
+                GUI.Label(new Rect(10f, TensionTextTop + 20f * i, 560f, 20f),
                           $"{arms[i].name}: {arms[i].TensionNewtons:0.00} N ({state}), path {path:0.000} of {arms[i].LengthMetres:0.000} m");
             }
         }

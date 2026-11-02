@@ -21,6 +21,7 @@ namespace PhysicsLab.Lab.EditorTools
         private const string IdPrefix = "prop-";
         private const float DefaultMassKg = 0.05f;
         private const float RingMassKg = 0.01f;
+        private const float ChairMassKg = 4f;              // heavy enough to feel solid, light enough to drag
         private const float MinBoxMetres = 0.01f;
         private const float LinearDamping = 1f;            // a little drag, so a dropped part does not slide for ever
         private const float AngularDamping = 4f;
@@ -28,7 +29,7 @@ namespace PhysicsLab.Lab.EditorTools
         private const int VelocityTrackingIndex = 2;       // XRGrabInteractable movement type: 0 Instantaneous, 1 Kinematic, 2 VelocityTracking
 
         // Props whose name starts with one of these are furniture: solid, but not grabbable.
-        private static readonly string[] FurnitureNames = { "LabBench", "LabChair", "ForceTable" };
+        private static readonly string[] FurnitureNames = { "LabBench", "ForceTable" };   // the chair is a loose part now
 
         [MenuItem("Lab/7 Make props grabbable")]
         private static void Menu()
@@ -79,9 +80,9 @@ namespace PhysicsLab.Lab.EditorTools
             }
 
             GameObject go = prop.gameObject;
-            FitBox(go, local);
-            int removed = RemoveOtherColliders(go);
-            if (removed > 0) log.AppendLine($"  {prop.name}: {removed} old collider(s) removed (a moving part may only use the box).");
+            if (!UsesMeshShape(prop.name)) FitBox(go, local);
+            int removed = UsesMeshShape(prop.name) ? LabMeshColliders.ReplaceWithConvexParts(go, log) : RemoveOtherColliders(go);
+            if (removed > 0) log.AppendLine($"  {prop.name}: {removed} old collider(s) replaced (a moving part may only use convex shapes).");
             ConfigureBody(go, MassFromName(prop.name));
 
             LabObject labObject = GetOrAdd<LabObject>(go);
@@ -91,7 +92,7 @@ namespace PhysicsLab.Lab.EditorTools
             GetOrAdd<ReturnIfFallen>(go);   // safety net: back to the start if it ever drops through the floor
             ConfigureGrab(go, log);
 
-            log.AppendLine($"  {prop.name}: grabbable, {MassFromName(prop.name) * 1000f:0} g, box {local.size.x:0.000} x {local.size.y:0.000} x {local.size.z:0.000} m.");
+            log.AppendLine($"  {prop.name}: grabbable, {MassFromName(prop.name) * 1000f:0} g, size {local.size.x:0.000} x {local.size.y:0.000} x {local.size.z:0.000} m.");
             return true;
         }
 
@@ -134,11 +135,16 @@ namespace PhysicsLab.Lab.EditorTools
                            "Track Rotation off, Throw On Detach off by hand.");
         }
 
-        // "HookedMass100g" is 0.1 kg. The ring is light. Anything else gets a small default.
+        // The chair is a moving body that must keep its real shape, so it gets convex mesh colliders (see LabMeshColliders).
+        // The small parts (masses, clamps, ring) use one fitted box.
+        private static bool UsesMeshShape(string propName) => propName.StartsWith("LabChair");
+
+        // "HookedMass100g" is 0.1 kg. The chair is heavier. The ring is light. Anything else gets a small default.
         private static float MassFromName(string propName)
         {
             Match grams = Regex.Match(propName, @"(\d+)g$");
             if (grams.Success) return int.Parse(grams.Groups[1].Value) / 1000f;
+            if (propName.StartsWith("LabChair")) return ChairMassKg;
             return propName.StartsWith("Ring") ? RingMassKg : DefaultMassKg;
         }
 

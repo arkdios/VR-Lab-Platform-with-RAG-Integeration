@@ -14,6 +14,9 @@ namespace PhysicsLab.Lab.Connect
         [Tooltip("Optional. Told the new angle when the part snaps to a table slot.")]
         [SerializeField] private Pulley pulley;
 
+        [Tooltip("While the part is held, it turns to face the table centre. Bigger means a faster turn (1/s).")]
+        [SerializeField] private float turnSpeedPerSecond = 12f;
+
         private LabObject _labObject;
         private Rigidbody _body;
         private ConnectPoint _lastPoint;
@@ -39,6 +42,17 @@ namespace PhysicsLab.Lab.Connect
                 if (_body == null) _body = GetComponent<Rigidbody>();
                 return _body;
             }
+        }
+
+        // While held, the part keeps facing the table centre. Without this it kept its old turn until it was
+        // let go, and then jumped to the turn of the spot.
+        private void FixedUpdate()
+        {
+            if (pulley == null || !LabObject.IsHeld) return;
+
+            Quaternion goal = pulley.FacingRotation(Body.position);
+            float blend = 1f - Mathf.Exp(-turnSpeedPerSecond * Time.fixedDeltaTime);   // the same speed at any frame rate
+            Body.MoveRotation(Quaternion.Slerp(Body.rotation, goal, blend));
         }
 
         /// <summary>Marks the part as sitting on a spot without moving it. Used at start-up.</summary>

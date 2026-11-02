@@ -48,7 +48,7 @@ namespace PhysicsLab.Lab.EditorTools
 
             // 1. The table and the centre pin never move, so they must not have a Rigidbody.
             MakeStatic(table.gameObject, log);
-            FitBox(table.gameObject, log);
+            if (!LabMeshColliders.ReplaceWithOneMesh(table.gameObject, "Table_Collision", log)) FitBox(table.gameObject, log);   // no model mesh yet: keep the old box
             float tableTop = table.GetComponent<Renderer>().bounds.max.y;
             Undo.RecordObject(center, "Table centre height");
             center.position = new Vector3(center.position.x, tableTop, center.position.z);

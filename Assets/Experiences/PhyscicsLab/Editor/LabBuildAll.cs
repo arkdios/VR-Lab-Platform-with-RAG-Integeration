@@ -23,7 +23,8 @@ namespace PhysicsLab.Lab.EditorTools
                       && LabStringBuilder.Run(log)
                       && LabConnectBuilder.Run(log)
                       && LabCursorBuilder.Run(log)
-                      && LabPropsBuilder.Run(log);
+                      && LabPropsBuilder.Run(log)
+                      && LabPolish.Run(log);
 
             if (ok)
             {

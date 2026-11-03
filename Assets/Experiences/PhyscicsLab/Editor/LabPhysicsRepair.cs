@@ -113,6 +113,7 @@ namespace PhysicsLab.Lab.EditorTools
             body.constraints = RigidbodyConstraints.FreezeAll; // clamped: it moves only when a hand takes it
             body.interpolation = RigidbodyInterpolation.None;
             FitBox(go, log);
+            LabPulleyAxle.Measure(pulley, log);   // which way the wheel points, before the pulley is turned
             PlaceLikePulleyScript(pulley, center);
 
             LabObject massObject = ReadReference<LabObject>(pulley, "massObject");
@@ -170,7 +171,7 @@ namespace PhysicsLab.Lab.EditorTools
             float radians = degrees * Mathf.Deg2Rad;
             Vector3 outward = new Vector3(Mathf.Cos(radians), 0f, Mathf.Sin(radians));
             Undo.RecordObject(pulley.transform, "Place pulley");
-            pulley.transform.rotation = Quaternion.LookRotation(-outward, Vector3.up);
+            pulley.transform.rotation = pulley.FacingRotation(center.position + outward * rim);
             pulley.transform.position = center.position + outward * rim;
         }
 

@@ -90,8 +90,9 @@ namespace PhysicsLab.Lab.Connect
             Body.linearVelocity = Vector3.zero;
             Body.angularVelocity = Vector3.zero;
             Body.position = point.transform.position;
-            Body.rotation = point.transform.rotation;
-            transform.SetPositionAndRotation(point.transform.position, point.transform.rotation);
+            Quaternion turn = pulley != null ? pulley.FacingRotation(point.transform.position) : point.transform.rotation;   // a pulley turns as its wheel needs
+            Body.rotation = turn;
+            transform.SetPositionAndRotation(point.transform.position, turn);
             Body.constraints = RigidbodyConstraints.FreezeAll;
 
             if (pulley != null) pulley.SetAngleFromPosition(point.AngleDegrees);

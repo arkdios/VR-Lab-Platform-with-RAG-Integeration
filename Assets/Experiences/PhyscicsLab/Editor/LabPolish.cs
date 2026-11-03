@@ -2,12 +2,11 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
-using System.Text.RegularExpressions;
-using PhysicsLab.Core.Rigs;
 using TMPro;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.Rendering;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
@@ -17,9 +16,10 @@ namespace PhysicsLab.Lab.EditorTools
     /// Menu: Lab > 9 Polish (UI and colours). Also runs at the end of Lab > 0.
     /// 1. UI: the student panels stop fading out, get a dark background and white text, and the text fits its box.
     /// 2. The two pulley button panels at the bottom are switched off (nothing is deleted).
-    /// 3. Colours: makes URP materials (and one wood texture) and puts them on the lab parts and the furniture.
-    /// 4. Clean-up: removes the empty script slot left on the Desktop Rig by the first version of this tool.
-    /// Safe to run again. Ctrl+Z undoes the scene changes (the new material files stay in the project).
+    /// 3. Colours: URP materials that copy the real equipment in the lab slides (Phys 124 Experiment 5),
+    ///    put on each model part by the part's name.
+    /// 4. Degree scale: a flat printed disc on top of the force table (0 to 360, a tick every degree).
+    /// Safe to run again. Ctrl+Z undoes the scene changes (the material, texture and mesh files stay in the project).
     /// </summary>
     public static class LabPolish
     {
@@ -27,6 +27,7 @@ namespace PhysicsLab.Lab.EditorTools
         private const string UiRootName = "Lab UI";
         private const string PropsRootName = "LabProps (Temp)";
         private const string EquipmentName = "LabEquipments";
+        private const string TableCenterName = "TableCenter";
 
         // UI
         private const float LookingAlpha = 0.9f;   // the panels were fading to 0.35 whenever the mouse was captured
@@ -42,29 +43,40 @@ namespace PhysicsLab.Lab.EditorTools
         private const string MaterialParentFolder = "Assets/Experiences/PhyscicsLab/Materials";
         private const string WoodTexturePath = MaterialFolder + "/WoodGrain.png";
         private const int WoodTextureSize = 256;
-        private const float LightMassLimitGrams = 75f;    // under this: a 50 g mass
-        private const float HeavyMassLimitGrams = 150f;   // over this: a 200 g mass
-        private const float DefaultMassGrams = 100f;
 
         // Parts under LabEquipments that get a colour.
         private static readonly string[] EquipmentParts = { "Table", "Ring", "Pulley 1", "Pulley 2", "Mass 1", "Mass 2", "SpringScale", "CenterPin" };
 
-        // A model part whose name has one of these words gets the accent material (legs, wheels, frames).
-        // Everything else gets the main material. Change this list if a part gets the wrong one.
-        private static readonly string[] AccentWords =
+        // Degree scale
+        private const string DegreeScaleName = "DegreeScale";
+        private const string DiskPartName = "Table_Disk";
+        private const string DegreeTexturePath = MaterialFolder + "/DegreeScale.png";
+        private const string DegreeMeshPath = "Assets/Experiences/PhyscicsLab/Models/Proxies/Table_DegreeScale.asset";
+        private const int DegreeTextureSize = 1024;
+        private const int DegreeSegments = 96;             // corners of the printed disc
+        private const float DegreeInsetFactor = 0.985f;    // the print stops just inside the edge of the disc
+        private const float DegreeLiftMetres = 0.0008f;    // above the disc, below the top of the glowing clamp spots
+        private const float TickHalfWidthPx = 0.8f;
+        private const float OuterMarginPx = 6f;
+        private const float LabelInsetPx = 80f;            // how far in from the outer circle the numbers sit
+        private const int LabelStepDegrees = 30;
+        private const int GlyphScale = 4;                  // each font dot is 4 x 4 pixels
+        private const int GlyphGapPx = 4;
+
+        // A 5 x 7 dot font for the digits 0 to 9. Rows run from the top to the bottom. 1 is ink.
+        private static readonly string[] Glyphs =
         {
-            "leg", "post", "pin", "foot", "feet", "wheel", "groove", "hook", "screw", "bolt",
-            "knob", "axle", "frame", "base", "stand", "rod", "pole", "handle"
+            "01110/10001/10011/10101/11001/10001/01110",   // 0
+            "00100/01100/00100/00100/00100/00100/01110",   // 1
+            "01110/10001/00001/00010/00100/01000/11111",   // 2
+            "11110/00001/00001/01110/00001/00001/11110",   // 3
+            "00010/00110/01010/10010/11111/00010/00010",   // 4
+            "11111/10000/11110/00001/00001/10001/01110",   // 5
+            "00110/01000/10000/11110/10001/10001/01110",   // 6
+            "11111/00001/00010/00100/01000/01000/01000",   // 7
+            "01110/10001/10001/01110/10001/10001/01110",   // 8
+            "01110/10001/10001/01111/00001/00010/01100"    // 9
         };
-
-        private struct Look
-        {
-            public Material main;
-            public Material accent;
-
-            public Look(Material both) { main = both; accent = both; }
-            public Look(Material mainMaterial, Material accentMaterial) { main = mainMaterial; accent = accentMaterial; }
-        }
 
         [MenuItem("Lab/9 Polish (UI and colours)")]
         private static void Menu()
@@ -85,8 +97,17 @@ namespace PhysicsLab.Lab.EditorTools
 
             PolishUi(log);
             HidePulleyPanels(log);
-            ColourScene(log);
-            RemoveOldWalkThrough(log);
+
+            Shader lit = Shader.Find("Universal Render Pipeline/Lit");
+            if (lit == null)
+            {
+                log.AppendLine("  ERROR: the shader Universal Render Pipeline/Lit was not found, so no colours were set.");
+                return false;
+            }
+            EnsureMaterialFolder();
+            ColourScene(lit, log);
+            AddDegreeScale(lit, log);
+
             AssetDatabase.SaveAssets();
             log.AppendLine("  Done. Save the scene (Ctrl+S) and press Play.");
             return true;
@@ -168,18 +189,10 @@ namespace PhysicsLab.Lab.EditorTools
 
         // ---------- 3. colours ----------
 
-        private static void ColourScene(StringBuilder log)
+        private static void ColourScene(Shader lit, StringBuilder log)
         {
-            Shader lit = Shader.Find("Universal Render Pipeline/Lit");
-            if (lit == null)
-            {
-                log.AppendLine("  ERROR: the shader Universal Render Pipeline/Lit was not found, so no colours were set.");
-                return;
-            }
-
-            EnsureMaterialFolder();
-            Dictionary<string, Look> looks = BuildLooks(lit);
-            log.AppendLine("  Colours (every part: main or accent):");
+            Dictionary<string, Material> byPartName = BuildPartMaterials(lit);
+            log.AppendLine("  Colours (every model part, by name):");
 
             int parts = 0;
             Transform props = LabSceneFixes.FindSceneObject(PropsRootName);
@@ -187,7 +200,7 @@ namespace PhysicsLab.Lab.EditorTools
             {
                 foreach (Transform prop in props)
                 {
-                    if (prop.gameObject.activeSelf) parts += ColourPart(prop, looks, log);   // hidden copies are skipped
+                    if (prop.gameObject.activeSelf) parts += ColourPart(prop, byPartName, log);   // hidden copies are skipped
                 }
             }
 
@@ -197,67 +210,79 @@ namespace PhysicsLab.Lab.EditorTools
                 foreach (string partName in EquipmentParts)
                 {
                     Transform part = equipment.Find(partName);
-                    if (part != null) parts += ColourPart(part, looks, log);
+                    if (part != null) parts += ColourPart(part, byPartName, log);
                 }
             }
             log.AppendLine($"  Colours: {parts} parts coloured.");
         }
 
-        private static Dictionary<string, Look> BuildLooks(Shader lit)
+        // The lab photos: white force table with blue feet and a black post, black clamp with a blue wheel,
+        // silver ring on black string, black hooked masses, a pale plastic spring scale with a steel hook.
+        // Each model part is named in the FBX, so the colour is chosen by that exact name.
+        private static Dictionary<string, Material> BuildPartMaterials(Shader lit)
         {
             Material wood = MakeMaterial(lit, "LabWood", Color.white, 0f, 0.25f, GetWoodTexture());
-            Material darkSteel = MakeMaterial(lit, "LabDarkSteel", new Color(0.17f, 0.19f, 0.23f), 0.5f, 0.45f, null);
-            Material blueSeat = MakeMaterial(lit, "LabBluePlastic", new Color(0.12f, 0.33f, 0.62f), 0f, 0.55f, null);
-            Material aluminium = MakeMaterial(lit, "LabAluminium", new Color(0.80f, 0.82f, 0.86f), 0.5f, 0.5f, null);
-            Material graphite = MakeMaterial(lit, "LabGraphite", new Color(0.14f, 0.14f, 0.16f), 0.4f, 0.4f, null);
-            Material brass = MakeMaterial(lit, "LabBrass", new Color(0.86f, 0.66f, 0.26f), 0.6f, 0.6f, null);
+            Material bluePlastic = MakeMaterial(lit, "LabBluePlastic", new Color(0.12f, 0.33f, 0.62f), 0f, 0.55f, null);
             Material chrome = MakeMaterial(lit, "LabChrome", new Color(0.90f, 0.90f, 0.92f), 0.7f, 0.75f, null);
-            Material blackMatte = MakeMaterial(lit, "LabBlackMatte", new Color(0.10f, 0.10f, 0.11f), 0.2f, 0.35f, null);
-            Material orangeBody = MakeMaterial(lit, "LabOrangeBody", new Color(0.88f, 0.30f, 0.10f), 0f, 0.5f, null);
 
-            // A part is matched by the start of its name. The masses are picked by weight in LookForMass.
-            var looks = new Dictionary<string, Look>
+            Material tableTop = MakeMaterial(lit, "LabTableTop", new Color(0.93f, 0.93f, 0.92f), 0f, 0.35f, null);
+            Material tableLeg = MakeMaterial(lit, "LabTableLeg", new Color(0.86f, 0.87f, 0.89f), 0.3f, 0.5f, null);
+            Material blueFoot = MakeMaterial(lit, "LabBlueFoot", new Color(0.08f, 0.33f, 0.85f), 0f, 0.5f, null);
+            Material blackPlastic = MakeMaterial(lit, "LabBlackPlastic", new Color(0.05f, 0.05f, 0.055f), 0f, 0.4f, null);
+            Material silver = MakeMaterial(lit, "LabSilver", new Color(0.80f, 0.81f, 0.83f), 0.4f, 0.6f, null);
+            Material clampGrey = MakeMaterial(lit, "LabClampGrey", new Color(0.12f, 0.12f, 0.13f), 0f, 0.35f, null);
+            Material blueWheel = MakeMaterial(lit, "LabBlueWheel", new Color(0.05f, 0.38f, 0.95f), 0f, 0.6f, null);
+            Material scaleCase = MakeMaterial(lit, "LabScaleCase", new Color(0.88f, 0.91f, 0.94f), 0f, 0.8f, null);
+            Material scalePointer = MakeMaterial(lit, "LabScalePointer", new Color(0.85f, 0.10f, 0.10f), 0f, 0.5f, null);
+
+            return new Dictionary<string, Material>
             {
-                { "LabBench", new Look(wood, darkSteel) },
-                { "LabChair", new Look(blueSeat, chrome) },
-                { "ForceTable", new Look(aluminium, graphite) },
-                { "Table", new Look(aluminium, graphite) },
-                { "Ring", new Look(brass) },
-                { "CenterPin", new Look(brass) },
-                { "Pulley", new Look(blackMatte, aluminium) },
-                { "SpringScale", new Look(orangeBody, chrome) },
-                { "MassLight", new Look(brass) },       // 50 g
-                { "MassMiddle", new Look(chrome) },     // 100 g
-                { "MassHeavy", new Look(graphite) }     // 200 g
+                // bench and chair (the look you already have, with steel legs on the chair)
+                { "LabBench", wood }, { "Bench_Back", wood }, { "Bench_CabL", wood }, { "Bench_CabR", wood }, { "Bench_Top", wood },
+                { "LabChair", bluePlastic }, { "Chair_Plastic", bluePlastic }, { "Chair_Steel", chrome },
+                // force table
+                { "Table_Disk", tableTop }, { "Table_Legs", tableLeg }, { "Table_Feet", blueFoot }, { "Table_Post", blackPlastic },
+                { "CenterPin", blackPlastic },
+                // central ring: silver ring, black string knots
+                { "Ring_Steel", silver }, { "Ring_Knots", blackPlastic },
+                // pulley: dark clamp, silver screw and axle, blue wheel
+                { "Pulley_Clamp", clampGrey }, { "Pulley_Steel", silver }, { "Pulley_Wheel", blueWheel },
+                // spring scale
+                { "SpringScale", scaleCase }, { "Scale_Case", scaleCase }, { "Scale_Pointer", scalePointer }, { "Scale_Steel", silver },
+                // hooked masses (black, as in the photo)
+                { "HookedMass50g", blackPlastic }, { "HookedMass100g", blackPlastic }, { "HookedMass200g", blackPlastic },
+                { "RealModel_50g", blackPlastic }, { "RealModel_100g", blackPlastic }, { "RealModel_200g", blackPlastic }
             };
-            return looks;
         }
 
-        private static int ColourPart(Transform part, Dictionary<string, Look> looks, StringBuilder log)
+        private static int ColourPart(Transform part, Dictionary<string, Material> byPartName, StringBuilder log)
         {
-            if (!TryGetLook(part, looks, out Look look)) return 0;
-
             var done = new List<string>();
+            var unknown = new List<string>();
             foreach (Renderer renderer in part.GetComponentsInChildren<Renderer>())
             {
                 if (!IsColourable(renderer)) continue;
+                if (!byPartName.TryGetValue(renderer.name, out Material material))
+                {
+                    unknown.Add(renderer.name);
+                    continue;
+                }
 
-                bool accent = IsAccent(renderer.name);
                 Undo.RecordObject(renderer, "Colour part");
-                renderer.sharedMaterials = SlotsFor(renderer.sharedMaterials.Length, accent ? look.accent : look.main, look.accent);
+                renderer.sharedMaterials = SameOnEverySlot(renderer.sharedMaterials.Length, material);
                 EditorUtility.SetDirty(renderer);
-                done.Add(renderer.name + (accent ? "=accent" : "=main"));
+                done.Add(renderer.name);
             }
 
             if (done.Count > 0) log.AppendLine($"    {part.name}: {string.Join(", ", done)}");
+            if (unknown.Count > 0) log.AppendLine($"    {part.name}: no colour rule for {string.Join(", ", unknown)} (left as it was)");
             return done.Count > 0 ? 1 : 0;
         }
 
-        // Slot 0 gets the part's material. The other slots of the same mesh get the accent.
-        private static Material[] SlotsFor(int slotCount, Material first, Material others)
+        private static Material[] SameOnEverySlot(int slotCount, Material material)
         {
             var slots = new Material[slotCount];
-            for (int i = 0; i < slotCount; i++) slots[i] = i == 0 ? first : others;
+            for (int i = 0; i < slotCount; i++) slots[i] = material;
             return slots;
         }
 
@@ -267,47 +292,6 @@ namespace PhysicsLab.Lab.EditorTools
             bool isMesh = renderer is MeshRenderer || renderer is SkinnedMeshRenderer;
             if (!isMesh || !renderer.enabled || renderer.sharedMaterials.Length == 0) return false;
             return renderer.GetComponent<TMP_Text>() == null;
-        }
-
-        private static bool IsAccent(string rendererName)
-        {
-            string lower = rendererName.ToLowerInvariant();
-            foreach (string word in AccentWords)
-            {
-                if (lower.Contains(word)) return true;
-            }
-            return false;
-        }
-
-        private static bool TryGetLook(Transform part, Dictionary<string, Look> looks, out Look look)
-        {
-            if (part.name.StartsWith("HookedMass") || part.name.StartsWith("Mass "))
-            {
-                look = looks[LookForMass(part)];
-                return true;
-            }
-
-            foreach (KeyValuePair<string, Look> entry in looks)
-            {
-                if (!part.name.StartsWith(entry.Key)) continue;
-                look = entry.Value;
-                return true;
-            }
-            look = default(Look);
-            return false;
-        }
-
-        // "HookedMass50g" is read from its name. "Mass 1" and "Mass 2" are read from their Rigidbody.
-        private static string LookForMass(Transform part)
-        {
-            float grams = DefaultMassGrams;
-            Match fromName = Regex.Match(part.name, @"(\d+)g$");
-            Rigidbody body = part.GetComponent<Rigidbody>();
-            if (fromName.Success) grams = float.Parse(fromName.Groups[1].Value);
-            else if (body != null) grams = body.mass * 1000f;
-
-            if (grams < LightMassLimitGrams) return "MassLight";
-            return grams > HeavyMassLimitGrams ? "MassHeavy" : "MassMiddle";
         }
 
         private static Material MakeMaterial(Shader lit, string materialName, Color colour, float metallic, float smoothness, Texture2D map)
@@ -361,18 +345,219 @@ namespace PhysicsLab.Lab.EditorTools
             return new Color(0.74f * shade, 0.52f * shade, 0.30f * shade, 1f);
         }
 
-        // ---------- 4. clean-up ----------
+        // ---------- 4. degree scale ----------
 
-        // The first version of this tool put a PlayerPassThrough script on the Desktop Rig. It is not wanted
-        // (the colliders are fixed instead). After the file is deleted, its slot on the rig shows as a missing script.
-        // This removes those empty slots. It does nothing when there are none.
-        private static void RemoveOldWalkThrough(StringBuilder log)
+        // A flat disc just above the force table top. It has its own mesh and UVs, so it does not depend on how the
+        // table model is unwrapped. Texture right = world +X (0 degrees), texture up = world +Z (90 degrees), the same
+        // angles the pulleys use. It has no collider, so it never blocks the mouse ray or a part.
+        private static void AddDegreeScale(Shader lit, StringBuilder log)
         {
-            DesktopRigController rig = Object.FindFirstObjectByType<DesktopRigController>(FindObjectsInactive.Include);
-            if (rig == null) return;
+            Transform equipment = LabSceneFixes.FindSceneObject(EquipmentName);
+            Transform table = equipment != null ? equipment.Find("Table") : null;
+            Renderer disk = table != null ? FindRendererByName(table, DiskPartName) : null;
+            if (disk == null)
+            {
+                log.AppendLine($"  Warning: no {DiskPartName} found under Table, so the degree scale was not made.");
+                return;
+            }
 
-            int removed = GameObjectUtility.RemoveMonoBehavioursWithMissingScript(rig.gameObject);
-            if (removed > 0) log.AppendLine($"  Clean-up: {removed} empty script slot(s) removed from {rig.name} (the old PlayerPassThrough).");
+            Bounds bounds = disk.bounds;
+            float radius = bounds.extents.x * DegreeInsetFactor;
+            var centre = new Vector3(bounds.center.x, bounds.max.y + DegreeLiftMetres, bounds.center.z);
+
+            Transform decal = equipment.Find(DegreeScaleName);
+            if (decal == null) decal = CreateDecal(equipment);
+
+            Undo.RecordObject(decal, "Degree scale");
+            decal.SetPositionAndRotation(centre, Quaternion.identity);
+            decal.GetComponent<MeshFilter>().sharedMesh = BuildDiscMesh(radius);
+
+            Material material = MakeMaterial(lit, "LabDegreeScale", Color.white, 0f, 0.3f, MakeDegreeTexture());
+            MeshRenderer meshRenderer = decal.GetComponent<MeshRenderer>();
+            meshRenderer.sharedMaterial = material;
+            meshRenderer.shadowCastingMode = ShadowCastingMode.Off;
+            EditorUtility.SetDirty(meshRenderer);
+
+            Transform marker = LabSceneFixes.FindSceneObject(TableCenterName);
+            float markerY = marker != null ? marker.position.y : float.NaN;
+            log.AppendLine($"  Degree scale: radius {radius:0.000} m, disc top y {bounds.max.y:0.000}, TableCenter y {markerY:0.000}. These two heights should be within a few mm.");
+        }
+
+        private static Transform CreateDecal(Transform parent)
+        {
+            var decal = new GameObject(DegreeScaleName, typeof(MeshFilter), typeof(MeshRenderer));
+            Undo.RegisterCreatedObjectUndo(decal, "Degree scale");
+            decal.transform.SetParent(parent, true);
+            return decal.transform;
+        }
+
+        private static Renderer FindRendererByName(Transform root, string rendererName)
+        {
+            foreach (Renderer renderer in root.GetComponentsInChildren<Renderer>(true))
+            {
+                if (renderer.name == rendererName) return renderer;
+            }
+            return null;
+        }
+
+        // A fan of triangles around the centre, facing up. The mesh is saved as an asset so the scene can point at it.
+        private static Mesh BuildDiscMesh(float radius)
+        {
+            var vertices = new Vector3[DegreeSegments + 1];
+            var normals = new Vector3[DegreeSegments + 1];
+            var uvs = new Vector2[DegreeSegments + 1];
+            var triangles = new int[DegreeSegments * 3];
+
+            uvs[0] = new Vector2(0.5f, 0.5f);
+            normals[0] = Vector3.up;
+            for (int i = 0; i < DegreeSegments; i++)
+            {
+                float angle = i * 2f * Mathf.PI / DegreeSegments;
+                var rim = new Vector3(Mathf.Cos(angle) * radius, 0f, Mathf.Sin(angle) * radius);
+                vertices[i + 1] = rim;
+                normals[i + 1] = Vector3.up;
+                uvs[i + 1] = new Vector2(0.5f + rim.x / (2f * radius), 0.5f + rim.z / (2f * radius));
+
+                triangles[i * 3] = 0;
+                triangles[i * 3 + 1] = (i + 1) % DegreeSegments + 1;   // the next corner, so the face looks up
+                triangles[i * 3 + 2] = i + 1;
+            }
+
+            var mesh = AssetDatabase.LoadAssetAtPath<Mesh>(DegreeMeshPath);
+            bool isNew = mesh == null;
+            if (isNew) mesh = new Mesh { name = "Table_DegreeScale" };
+
+            mesh.Clear();
+            mesh.vertices = vertices;
+            mesh.normals = normals;
+            mesh.uv = uvs;
+            mesh.triangles = triangles;
+            mesh.RecalculateBounds();
+            if (isNew) AssetDatabase.CreateAsset(mesh, DegreeMeshPath); else EditorUtility.SetDirty(mesh);
+            return mesh;
+        }
+
+        // Made again on every run (the result is the same each time, so git sees no change).
+        private static Texture2D MakeDegreeTexture()
+        {
+            var pixels = new Color32[DegreeTextureSize * DegreeTextureSize];
+            DrawPaperAndTicks(pixels);
+            DrawNumbers(pixels);
+
+            var texture = new Texture2D(DegreeTextureSize, DegreeTextureSize, TextureFormat.RGBA32, false);
+            texture.SetPixels32(pixels);
+            texture.Apply();
+            File.WriteAllBytes(DegreeTexturePath, texture.EncodeToPNG());
+            Object.DestroyImmediate(texture);
+
+            AssetDatabase.ImportAsset(DegreeTexturePath);
+            SharpenImport();
+            return AssetDatabase.LoadAssetAtPath<Texture2D>(DegreeTexturePath);
+        }
+
+        // Ticks every 1 degree, longer at 5 and 10, plus an outer circle.
+        private static void DrawPaperAndTicks(Color32[] pixels)
+        {
+            float centre = (DegreeTextureSize - 1) * 0.5f;
+            float outer = DegreeTextureSize * 0.5f - OuterMarginPx;
+            var paper = new Color32(246, 246, 244, 255);
+            var ink = new Color32(20, 20, 22, 255);
+
+            for (int y = 0; y < DegreeTextureSize; y++)
+            {
+                for (int x = 0; x < DegreeTextureSize; x++)
+                {
+                    float dx = x - centre;
+                    float dy = y - centre;
+                    float r = Mathf.Sqrt(dx * dx + dy * dy);
+                    Color32 colour = paper;
+
+                    if (Mathf.Abs(r - outer) <= 1.5f) colour = ink;
+                    else if (r < outer && r >= outer - TickLength(0)) colour = TickColour(dx, dy, r, outer, paper, ink);
+
+                    pixels[y * DegreeTextureSize + x] = colour;
+                }
+            }
+        }
+
+        private static Color32 TickColour(float dx, float dy, float r, float outer, Color32 paper, Color32 ink)
+        {
+            float degrees = Mathf.Atan2(dy, dx) * Mathf.Rad2Deg;
+            if (degrees < 0f) degrees += 360f;
+
+            float nearest = Mathf.Round(degrees);
+            float offsetPx = Mathf.Abs(degrees - nearest) * Mathf.Deg2Rad * r;   // distance to the closest tick line
+            bool onTick = offsetPx <= TickHalfWidthPx && r >= outer - TickLength(Mathf.RoundToInt(nearest) % 360);
+            return onTick ? ink : paper;
+        }
+
+        private static float TickLength(int degrees)
+        {
+            if (degrees % 10 == 0) return 40f;
+            return degrees % 5 == 0 ? 28f : 16f;
+        }
+
+        private static void DrawNumbers(Color32[] pixels)
+        {
+            float centre = (DegreeTextureSize - 1) * 0.5f;
+            float labelRadius = DegreeTextureSize * 0.5f - OuterMarginPx - LabelInsetPx;
+
+            for (int degrees = 0; degrees < 360; degrees += LabelStepDegrees)
+            {
+                float radians = degrees * Mathf.Deg2Rad;
+                int cx = Mathf.RoundToInt(centre + Mathf.Cos(radians) * labelRadius);
+                int cy = Mathf.RoundToInt(centre + Mathf.Sin(radians) * labelRadius);
+                DrawText(pixels, degrees.ToString(), cx, cy);
+            }
+        }
+
+        // Draws a number centred on (cx, cy). The top of each digit points to world +Z.
+        private static void DrawText(Color32[] pixels, string text, int cx, int cy)
+        {
+            int glyphWidth = 5 * GlyphScale;
+            int glyphHeight = 7 * GlyphScale;
+            int totalWidth = text.Length * glyphWidth + (text.Length - 1) * GlyphGapPx;
+            int left = cx - totalWidth / 2;
+            int bottom = cy - glyphHeight / 2;
+            var ink = new Color32(20, 20, 22, 255);
+
+            for (int i = 0; i < text.Length; i++)
+            {
+                string[] rows = Glyphs[text[i] - '0'].Split('/');
+                int glyphLeft = left + i * (glyphWidth + GlyphGapPx);
+                for (int row = 0; row < 7; row++)
+                {
+                    for (int col = 0; col < 5; col++)
+                    {
+                        if (rows[row][col] != '1') continue;
+                        FillDot(pixels, glyphLeft + col * GlyphScale, bottom + (6 - row) * GlyphScale, ink);
+                    }
+                }
+            }
+        }
+
+        private static void FillDot(Color32[] pixels, int x0, int y0, Color32 colour)
+        {
+            for (int y = y0; y < y0 + GlyphScale; y++)
+            {
+                for (int x = x0; x < x0 + GlyphScale; x++)
+                {
+                    if (x < 0 || y < 0 || x >= DegreeTextureSize || y >= DegreeTextureSize) continue;
+                    pixels[y * DegreeTextureSize + x] = colour;
+                }
+            }
+        }
+
+        // The disc is seen at a slant, so the texture needs anisotropic filtering to stay sharp.
+        private static void SharpenImport()
+        {
+            var importer = AssetImporter.GetAtPath(DegreeTexturePath) as TextureImporter;
+            if (importer == null || importer.anisoLevel == 8) return;
+
+            importer.anisoLevel = 8;
+            importer.filterMode = FilterMode.Trilinear;
+            importer.mipmapEnabled = true;
+            importer.SaveAndReimport();
         }
 
         // ---------- helpers ----------

@@ -101,7 +101,42 @@ namespace PhysicsLab.Lab
             Vector3 outward = position - tableCenter.position;
             outward.y = 0f;
             if (outward.sqrMagnitude < 1e-6f) return transform.rotation; // right over the centre: keep the turn
-            return Quaternion.LookRotation(-outward.normalized, Vector3.up);
+            return TurnForOutward(outward.normalized);
+        }
+
+        [Header("Wheel direction (filled in by Lab > 0)")]
+        [Tooltip("The wheel axle in the pulley's own space. The pulley is turned so this axle lies along the rim of the table (the tangent), which puts the wheel plane in line with the string.")]
+        [SerializeField] private Vector3 wheelAxleLocal = Vector3.right;
+        [Tooltip("The direction from the wheel to the clamp, in the pulley's own space. The clamp is turned toward the table. Zero means ignore.")]
+        [SerializeField] private Vector3 clampSideLocal = Vector3.zero;
+
+        // outward is the flat direction from the table centre to the pulley, length 1.
+        private Quaternion TurnForOutward(Vector3 outward)
+        {
+            Quaternion inward = Quaternion.LookRotation(-outward, Vector3.up);   // the old turn: +Z points at the table centre
+            Vector3 axle = Flat(wheelAxleLocal);
+            if (axle == Vector3.zero) return inward;                              // wheel lying flat: keep the old turn
+
+            Vector3 tangent = Vector3.Cross(Vector3.up, outward);                 // along the rim of the table
+            float yaw = Vector3.SignedAngle(axle, tangent, Vector3.up);
+            Quaternion one = Quaternion.AngleAxis(yaw, Vector3.up);               // the axle on the tangent...
+            Quaternion other = Quaternion.AngleAxis(yaw + 180f, Vector3.up);      // ...or the same line, turned half way round
+
+            Vector3 clamp = Flat(clampSideLocal);
+            if (clamp != Vector3.zero)
+            {
+                float oneScore = Vector3.Dot(one * clamp, -outward);              // 1 = the clamp faces the table
+                float otherScore = Vector3.Dot(other * clamp, -outward);
+                if (Mathf.Abs(oneScore - otherScore) > 0.1f) return oneScore > otherScore ? one : other;
+            }
+            return Quaternion.Angle(one, inward) <= Quaternion.Angle(other, inward) ? one : other;   // nearest to the old turn
+        }
+
+        // The same direction without its height, length 1. Zero when it points (almost) straight up or down.
+        private static Vector3 Flat(Vector3 direction)
+        {
+            direction.y = 0f;
+            return direction.sqrMagnitude < 0.01f ? Vector3.zero : direction.normalized;
         }
 
         private Vector3 OutwardDirection()
@@ -113,9 +148,9 @@ namespace PhysicsLab.Lab
         private void PlaceOnRim()
         {
             Vector3 outward = OutwardDirection();
-            // Turn the pulley so its local +Z points at the table center. The wheel then
-            // lines up with the string, and the axle stays tangent to the rim.
-            transform.rotation = Quaternion.LookRotation(-outward, Vector3.up);
+            // Turn the pulley so its wheel axle lies along the rim (the tangent). The string then
+            // runs in the plane of the wheel. FacingRotation works the turn out from the measured axle.
+            transform.rotation = FacingRotation(tableCenter.position + outward * rimRadiusMetres);
             transform.position = tableCenter.position + outward * rimRadiusMetres;
             // With a massBody the mass is a child that hangs from the string, so it moves with the pulley.
             if (massBody != null) return;

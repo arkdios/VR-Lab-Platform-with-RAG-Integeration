@@ -2163,7 +2163,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 84799244}
   serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -1, z: -0, w: -0.00000004371139}
+  m_LocalRotation: {x: -0, y: 1, z: -0, w: -0.00000004371139}
   m_LocalPosition: {x: 0.4000001, y: 0.2109999, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -2193,8 +2193,8 @@ MonoBehaviour:
   massDropMetres: 0.12
   angleDegrees: 0
   massKg: 0.1
-  wheelAxleLocal: {x: -1.4210851e-14, y: 0, z: 1}
-  clampSideLocal: {x: 0.7304405, y: 0.62969273, z: 0.2644687}
+  wheelAxleLocal: {x: 0, y: 0, z: 1}
+  clampSideLocal: {x: 0.7304381, y: 0.62969464, z: 0.26447102}
 --- !u!114 &84799251
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -7431,7 +7431,7 @@ GameObject:
   m_CorrespondingSourceObject: {fileID: 4883905760926736891, guid: a5eb5179f3ff14c489192bac040e85a5, type: 3}
   m_PrefabInstance: {fileID: 1885594577}
   m_PrefabAsset: {fileID: 0}
---- !u!64 &460195816
+--- !u!64 &460195812
 MeshCollider:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -11141,7 +11141,7 @@ Transform:
   m_GameObject: {fileID: 679176190}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -0.026000023, y: 0.041999936, z: 0.0000000022729942}
+  m_LocalPosition: {x: -0.026000023, y: 0.041999936, z: -0.0000000022729942}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -20864,7 +20864,7 @@ GameObject:
   m_CorrespondingSourceObject: {fileID: 391843547582759948, guid: a5eb5179f3ff14c489192bac040e85a5, type: 3}
   m_PrefabInstance: {fileID: 1885594577}
   m_PrefabAsset: {fileID: 0}
---- !u!64 &1226540298
+--- !u!64 &1226540294
 MeshCollider:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -28212,8 +28212,8 @@ MonoBehaviour:
   massDropMetres: 0.12
   angleDegrees: 90
   massKg: 0.1
-  wheelAxleLocal: {x: 0, y: 0, z: 1}
-  clampSideLocal: {x: 0.73043835, y: 0.6296949, z: 0.26446965}
+  wheelAxleLocal: {x: 1.4210851e-14, y: 0, z: 1}
+  clampSideLocal: {x: 0.7304438, y: 0.62969166, z: 0.26446244}
 --- !u!114 &1733330444
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -31297,10 +31297,10 @@ PrefabInstance:
       addedObject: {fileID: 1885594582}
     - targetCorrespondingSourceObject: {fileID: 391843547582759948, guid: a5eb5179f3ff14c489192bac040e85a5, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 1226540298}
+      addedObject: {fileID: 1226540294}
     - targetCorrespondingSourceObject: {fileID: 4883905760926736891, guid: a5eb5179f3ff14c489192bac040e85a5, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 460195816}
+      addedObject: {fileID: 460195812}
   m_SourcePrefab: {fileID: 100100000, guid: a5eb5179f3ff14c489192bac040e85a5, type: 3}
 --- !u!4 &1885594578 stripped
 Transform:

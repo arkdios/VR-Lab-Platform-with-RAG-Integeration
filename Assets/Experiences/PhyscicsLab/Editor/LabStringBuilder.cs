@@ -190,7 +190,8 @@ namespace PhysicsLab.Lab.EditorTools
             float length = Vector3.Distance(hook.position, groove.position) + MassHangDropMetres;
 
             var ignore = new List<Collider>(ringColliders);
-            if (tableCollider != null) ignore.Add(tableCollider);
+            // The table is not on this list on purpose: a hanging mass must hit the table, like a bench mass does.
+            // It hangs 1 cm outside the table edge, so it does not touch the table while it hangs.
             Collider pulleyCollider = pulley.GetComponent<Collider>();
             if (pulleyCollider != null) ignore.Add(pulleyCollider);
 

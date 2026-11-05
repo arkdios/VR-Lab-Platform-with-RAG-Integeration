@@ -4,8 +4,8 @@ namespace PhysicsLab.Lab
 {
     /// <summary>
     /// Placeholder step rules for the prototype, until the real PHYS 124 steps exist.
-    /// Grabbing the ring during step 1 moves to step 2. Grabbing the spring scale during step 2
-    /// moves to step 3. Remove this component when the real rules arrive.
+    /// Grabbing the ring during step 1 marks step 1 as done, and letting go moves to step 2. The same for the
+    /// spring scale in step 2 (then step 3). Remove this component when the real rules arrive.
     /// </summary>
     public class PrototypeStepRules : MonoBehaviour
     {
@@ -35,7 +35,10 @@ namespace PhysicsLab.Lab
 
         private void AdvanceIf(bool grabbed, int requiredStep)
         {
-            if (grabbed && steps.CurrentIndex == requiredStep) steps.TryAdvance();
+            if (steps.CurrentIndex != requiredStep) return;
+
+            if (grabbed) steps.TryMarkComplete();                      // grabbing finishes the step
+            else if (steps.IsCurrentStepComplete) steps.TryAdvance();  // letting go moves on
         }
     }
 }

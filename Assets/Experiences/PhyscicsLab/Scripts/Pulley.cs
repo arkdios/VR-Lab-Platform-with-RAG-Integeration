@@ -29,6 +29,7 @@ namespace PhysicsLab.Lab
 
         public string ObjectId => _labObject.ObjectId;
         public string MassObjectId => massObject.ObjectId;
+        public LabObject MassObject => massObject;
         public Vector3 MassPosition => massObject.transform.position;
         public float AngleDegrees => angleDegrees;
         public float MassKg => massKg;

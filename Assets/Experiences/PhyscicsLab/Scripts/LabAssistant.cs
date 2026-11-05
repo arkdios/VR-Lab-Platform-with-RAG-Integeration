@@ -131,6 +131,12 @@ namespace PhysicsLab.Lab
             payload.pulleys = new PulleyState[0];
             payload.masses = new MassState[0];
             payload.spring_scale = new ScaleState();
+            payload.ring = new RingState();
+            payload.strings = new StringState[0];
+            payload.step_completed = false;
+            payload.step_index = 0;
+            payload.step_count = 0;
+            payload.step_elapsed_s = 0f;
         }
 
         private void OnResult(PendingRequest pending, ChatResult result)

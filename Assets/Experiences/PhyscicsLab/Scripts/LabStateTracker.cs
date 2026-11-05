@@ -30,6 +30,10 @@ namespace PhysicsLab.Lab
         [SerializeField] private float ringMoveThresholdMetres = 0.02f;
 
         private EventLog _log;
+        private LabStatusReader _status;
+
+        // Reads held, attached to and status for every object. Made on first use.
+        private LabStatusReader Status => _status ??= new LabStatusReader(ring, springScale);
         private string _heldObjectId = string.Empty;
         private string _selectedObjectId = string.Empty;
         private Vector3 _lastLoggedRingPosition;
@@ -82,20 +86,27 @@ namespace PhysicsLab.Lab
         /// </summary>
         public LabStatePayload Capture()
         {
-            return new LabStatePayload
+            LabStatePayload payload = new LabStatePayload
             {
                 t_ms = SessionClock.NowMs,
                 current_step = steps.CurrentStepId,
+                step_completed = steps.IsCurrentStepComplete,
+                step_index = steps.CurrentIndex,
+                step_count = steps.StepCount,
+                step_elapsed_s = Mathf.Round(steps.StepElapsedSeconds * 10f) / 10f,
                 previous_step = steps.PreviousStepId,
                 previous_action = LatestEventOrEmpty(),
                 held_object = _heldObjectId,
                 selected_object = _selectedObjectId,
                 ring_position = ToTableSpace(ring.position),
+                ring = CaptureRing(),
                 pulleys = CapturePulleys(),
                 masses = CaptureMasses(),
                 spring_scale = CaptureSpringScale(),
                 recent_events = _log.SnapshotLast(recentEventCount)
             };
+            AddObjectStatus(payload);
+            return payload;
         }
 
         /// <summary>
@@ -108,6 +119,9 @@ namespace PhysicsLab.Lab
 
             if (subscribe) steps.StepChanged += OnStepChanged;
             else steps.StepChanged -= OnStepChanged;
+
+            if (subscribe) steps.StepCompleted += OnStepCompleted;
+            else steps.StepCompleted -= OnStepCompleted;
         }
 
         private void SubscribeToLabObject(LabObject labObject, bool subscribe)
@@ -177,6 +191,9 @@ namespace PhysicsLab.Lab
         private void OnMassChanged(Pulley pulley) =>
             _log.Add(LabEventTypes.MassChanged, pulley.MassObjectId, Format(pulley.MassKg));
 
+        private void OnStepCompleted(string stepId) =>
+            _log.Add(LabEventTypes.StepCompleted, "lab", stepId);
+
         private void OnStepChanged(string previousId, string currentId) =>
             _log.Add(LabEventTypes.StepChanged, "lab", $"{previousId}->{currentId}");
 
@@ -232,6 +249,28 @@ namespace PhysicsLab.Lab
                 };
             }
             return states;
+        }
+
+        private RingState CaptureRing() => new RingState
+        {
+            id = Status.RingId,
+            object_position = ToTableSpace(ring.position)
+        };
+
+        /// <summary>
+        /// Adds held_by_user, attached_to and status to every object in the snapshot, and the list of strings.
+        /// The Capture methods only read positions. This one reads who holds what and what is tied to what.
+        /// </summary>
+        private void AddObjectStatus(LabStatePayload payload)
+        {
+            Status.FillRing(payload.ring);
+            for (int i = 0; i < pulleys.Length; i++)
+            {
+                Status.FillPulley(payload.pulleys[i], pulleys[i]);
+                Status.FillMass(payload.masses[i], pulleys[i]);
+            }
+            Status.FillScale(payload.spring_scale);
+            payload.strings = Status.ReadStrings();
         }
 
         private ScaleState CaptureSpringScale() => new ScaleState

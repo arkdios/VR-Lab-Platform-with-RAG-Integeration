@@ -12,6 +12,7 @@ namespace PhysicsLab.Lab
         public const string PulleyAngleChanged = "pulley_angle_changed";
         public const string MassChanged = "mass_changed";
         public const string StepChanged = "step_changed";
+        public const string StepCompleted = "step_completed";
         public const string MeasurementRecorded = "measurement_recorded";
         public const string ScaleMoved = "scale_moved";
         public const string ProgressRestored = "progress_restored";

@@ -2194,7 +2194,7 @@ MonoBehaviour:
   angleDegrees: 0
   massKg: 0.1
   wheelAxleLocal: {x: 0, y: 0, z: 1}
-  clampSideLocal: {x: 0.7304381, y: 0.62969464, z: 0.26447102}
+  clampSideLocal: {x: 0.730438, y: 0.6296946, z: 0.26447114}
 --- !u!114 &84799251
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -10042,7 +10042,6 @@ MonoBehaviour:
   slackSide: 1
   ignoreCollisionWith:
   - {fileID: 54736073}
-  - {fileID: 925059287}
   - {fileID: 84799260}
 --- !u!120 &618692047
 LineRenderer:
@@ -22378,7 +22377,6 @@ MonoBehaviour:
   slackSide: -1
   ignoreCollisionWith:
   - {fileID: 54736073}
-  - {fileID: 925059287}
   - {fileID: 1733330453}
 --- !u!120 &1324363943
 LineRenderer:

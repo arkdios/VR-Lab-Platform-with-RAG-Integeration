@@ -46,6 +46,9 @@ namespace PhysicsLab.Lab.Rope
         public float RawTensionNewtons => Link != null ? Link.tension : 0f;
 
         public float LengthMetres => lengthMetres;
+
+        /// <summary>The top of the pulley wheel this string runs over, or null when it runs free.</summary>
+        public Transform Guide => guide;
         public bool IsTaut => Link != null && Link.overshoot > -StraightEnoughMetres;
 
         /// <summary>Changes the string length. Used by the builder and, later, by a "length" setting.</summary>

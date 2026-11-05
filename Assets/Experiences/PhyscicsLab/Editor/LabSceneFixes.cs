@@ -92,7 +92,7 @@ namespace PhysicsLab.Lab.EditorTools
         private static void FixCameraLayers(StringBuilder log)
         {
             int labLayers = LayerMask.GetMask("LabFixed", "LabBody");
-            foreach (Camera cam in Object.FindObjectsByType<Camera>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            foreach (Camera cam in Object.FindObjectsByType<Camera>(FindObjectsInactive.Include))
             {
                 bool drawsDefaultLayer = (cam.cullingMask & 1) != 0;   // the stereo output camera draws only its own layer
                 if (!drawsDefaultLayer || (cam.cullingMask & labLayers) == labLayers) continue;

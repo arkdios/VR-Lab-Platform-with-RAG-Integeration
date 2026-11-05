@@ -52,7 +52,9 @@ namespace PhysicsLab.Lab.EditorTools
             SetObject(slotRing, "glowMaterial", glow);
 
             var parts = new Object[pulleys.Length];
-            for (int i = 0; i < pulleys.Length; i++) parts[i] = PreparePulley(pulleys[i], center, log);
+            Transform table = equipment.Find("Table");
+            Collider tableCollider = table != null ? table.GetComponent<Collider>() : null;
+            for (int i = 0; i < pulleys.Length; i++) parts[i] = PreparePulley(pulleys[i], center, tableCollider, log);
 
             foreach (Pulley pulley in pulleys)
             {
@@ -72,11 +74,13 @@ namespace PhysicsLab.Lab.EditorTools
 
         // ---------- parts ----------
 
-        private static ConnectPart PreparePulley(Pulley pulley, Transform center, StringBuilder log)
+        private static ConnectPart PreparePulley(Pulley pulley, Transform center, Collider tableCollider, StringBuilder log)
         {
             GameObject go = pulley.gameObject;
             ConnectPart part = GetOrAdd<ConnectPart>(go);
             SetObject(part, "pulley", pulley);
+            SetObject(part, "tableCollider", tableCollider);
+            if (tableCollider == null) log.AppendLine($"  Warning: {pulley.name}: no Table collider found, so the pulley can still hit the table.");
 
             TableBounds reach = GetOrAdd<TableBounds>(go);
             SetObject(reach, "tableCenter", center);

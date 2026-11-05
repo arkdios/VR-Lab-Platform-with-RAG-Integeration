@@ -17,6 +17,9 @@ namespace PhysicsLab.Lab.Connect
         [Tooltip("While the part is held, it turns to face the table centre. Bigger means a faster turn (1/s).")]
         [SerializeField] private float turnSpeedPerSecond = 12f;
 
+        [Tooltip("The table. A clamp sits on the table rim, so its box overlaps the table. The part passes through it. Filled in by Lab > 0.")]
+        [SerializeField] private Collider tableCollider;
+
         private LabObject _labObject;
         private Rigidbody _body;
         private ConnectPoint _lastPoint;
@@ -41,6 +44,17 @@ namespace PhysicsLab.Lab.Connect
             {
                 if (_body == null) _body = GetComponent<Rigidbody>();
                 return _body;
+            }
+        }
+
+        // The pulley box overlaps the table rim (it grips the rim), so the table must not push it.
+        private void Awake()
+        {
+            if (tableCollider == null) return;
+
+            foreach (Collider mine in GetComponentsInChildren<Collider>())
+            {
+                Physics.IgnoreCollision(mine, tableCollider, true);
             }
         }
 

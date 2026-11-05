@@ -148,7 +148,7 @@ namespace PhysicsLab.Lab
         {
             if (_arms != null) return _arms;
 
-            RopeArm[] found = Object.FindObjectsByType<RopeArm>(FindObjectsSortMode.None);
+            RopeArm[] found = Object.FindObjectsByType<RopeArm>();
             var valid = new List<RopeArm>(found.Length);
             foreach (RopeArm arm in found)
             {

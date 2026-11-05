@@ -9,7 +9,7 @@ namespace PhysicsLab.Lab
     public class DesktopHint : MonoBehaviour
     {
         private const string LockedText =
-            "Look is ON. Hold left click on the ring or scale to drag. Tab or Esc frees the mouse for buttons.";
+            "Look is ON. Hold left click on a part to drag it. Tab or Esc frees the mouse for buttons.";
         private const string FreeText =
             "Mouse is free (buttons work). Press Tab or click the scene to look around and drag.";
 

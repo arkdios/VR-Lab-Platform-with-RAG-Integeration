@@ -2395,6 +2395,7 @@ MonoBehaviour:
   fitsKind: 0
   pulley: {fileID: 84799250}
   turnSpeedPerSecond: 12
+  tableCollider: {fileID: 925059287}
 --- !u!65 &84799260
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -28412,6 +28413,7 @@ MonoBehaviour:
   fitsKind: 0
   pulley: {fileID: 1733330443}
   turnSpeedPerSecond: 12
+  tableCollider: {fileID: 925059287}
 --- !u!65 &1733330453
 BoxCollider:
   m_ObjectHideFlags: 0

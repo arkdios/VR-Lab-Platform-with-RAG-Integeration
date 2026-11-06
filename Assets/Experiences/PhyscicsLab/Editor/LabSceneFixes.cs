@@ -42,7 +42,7 @@ namespace PhysicsLab.Lab.EditorTools
         /// </summary>
         public static SpringScale PrepareSpringScale(StringBuilder log)
         {
-            SpringScale scale = Object.FindFirstObjectByType<SpringScale>();
+            SpringScale scale = Object.FindAnyObjectByType<SpringScale>();
             if (scale == null)
             {
                 log.AppendLine("  ERROR: no SpringScale in the scene.");
@@ -106,7 +106,7 @@ namespace PhysicsLab.Lab.EditorTools
 
         private static void FixCanvasScaler(StringBuilder log)
         {
-            CanvasScaler scaler = Object.FindFirstObjectByType<CanvasScaler>(FindObjectsInactive.Include);
+            CanvasScaler scaler = Object.FindAnyObjectByType<CanvasScaler>(FindObjectsInactive.Include);
             if (scaler == null)
             {
                 log.AppendLine("  ERROR: no Canvas Scaler found.");

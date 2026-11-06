@@ -65,7 +65,7 @@ namespace PhysicsLab.Lab.EditorTools
             ConnectManager manager = GetOrAdd<ConnectManager>(root.gameObject);
             SetObject(manager, "slotRing", slotRing);
             SetObjectArray(manager, "parts", parts);
-            SetObject(manager, "stateTracker", Object.FindFirstObjectByType<LabStateTracker>());
+            SetObject(manager, "stateTracker", Object.FindAnyObjectByType<LabStateTracker>());
             SetFloat(manager, "snapRadiusMetres", 0.10f);
 
             log.AppendLine("  Done. 24 clamp spots are made when Play starts. Grab a pulley and they glow.");

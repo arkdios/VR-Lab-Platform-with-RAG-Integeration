@@ -90,6 +90,7 @@ namespace PhysicsLab.Lab.EditorTools
             LabSerialized.SetBool(labObject, "freeDrag", true);   // dragged in 3D, the mouse wheel pushes and pulls
 
             GetOrAdd<ReturnIfFallen>(go);   // safety net: back to the start if it ever drops through the floor
+            if (CanTip(prop.name)) GetOrAdd<TiltFreeOnRelease>(go);   // a held chair stays level, a let-go chair can fall over
             ConfigureGrab(go, log);
 
             log.AppendLine($"  {prop.name}: grabbable, {MassFromName(prop.name) * 1000f:0} g, size {local.size.x:0.000} x {local.size.y:0.000} x {local.size.z:0.000} m.");
@@ -118,8 +119,11 @@ namespace PhysicsLab.Lab.EditorTools
             body.maxDepenetrationVelocity = MaxDepenetrationSpeed;
             body.interpolation = RigidbodyInterpolation.Interpolate;
             body.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
-            // The part may turn about the vertical axis only, so it stays the way up it was placed.
-            body.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
+            // Small parts turn about the vertical axis only, so they stay the way up they were placed.
+            // The chair tilts freely, so it falls over when it is not held up. TiltFreeOnRelease keeps it level in a hand.
+            body.constraints = CanTip(go.name)
+                ? RigidbodyConstraints.None
+                : RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
         }
 
         // Same settings as the lab parts: velocity tracking, no rotation tracking, no throw.
@@ -138,6 +142,9 @@ namespace PhysicsLab.Lab.EditorTools
         // The chair is a moving body that must keep its real shape, so it gets convex mesh colliders (see LabMeshColliders).
         // The small parts (masses, clamps, ring) use one fitted box.
         private static bool UsesMeshShape(string propName) => propName.StartsWith("LabChair");
+
+        // Only the chair may tip over. The small parts keep their tilt lock.
+        private static bool CanTip(string propName) => propName.StartsWith("LabChair");
 
         // "HookedMass100g" is 0.1 kg. The chair is heavier. The ring is light. Anything else gets a small default.
         private static float MassFromName(string propName)

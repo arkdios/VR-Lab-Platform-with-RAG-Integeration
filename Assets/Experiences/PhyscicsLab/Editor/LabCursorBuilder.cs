@@ -32,7 +32,7 @@ namespace PhysicsLab.Lab.EditorTools
 
         public static bool Run(StringBuilder log)
         {
-            DesktopPointer pointer = Object.FindFirstObjectByType<DesktopPointer>(FindObjectsInactive.Include);
+            DesktopPointer pointer = Object.FindAnyObjectByType<DesktopPointer>(FindObjectsInactive.Include);
             if (pointer == null)
             {
                 log.AppendLine("  ERROR: there is no DesktopPointer in the scene.");

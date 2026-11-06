@@ -89,9 +89,6 @@ namespace PhysicsLab.Lab.Connect
         public void PickUp()
         {
             Clear();
-#if UNITY_EDITOR
-            Debug.Log($"[ConnectDebug] {name} picked up at {Body.position:F3}. Constraints before: {Body.constraints}. Kinematic: {Body.isKinematic}.", this);
-#endif
             Body.constraints = RigidbodyConstraints.FreezeRotation;
             Body.useGravity = false; // held in the air or on the table plane, it must not fall
         }

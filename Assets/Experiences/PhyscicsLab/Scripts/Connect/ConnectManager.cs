@@ -68,10 +68,6 @@ namespace PhysicsLab.Lab.Connect
             if (_held != part) return;
 
             ConnectPoint target = FindNearestFreeSpot(part, out float distance);
-#if UNITY_EDITOR
-            string slotName = target != null ? $"slot {target.AngleDegrees:0} deg" : "no slot";
-            Debug.Log($"[ConnectDebug] {part.name} released at {part.Position:F3}. Nearest free spot: {slotName}, {distance:F3} m away (snap radius {snapRadiusMetres:F2} m).", part);
-#endif
             if (target != null && distance <= snapRadiusMetres)
             {
                 part.SnapTo(target);

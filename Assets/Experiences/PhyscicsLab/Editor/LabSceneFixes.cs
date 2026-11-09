@@ -16,7 +16,7 @@ namespace PhysicsLab.Lab.EditorTools
     /// </summary>
     public static class LabSceneFixes
     {
-        private const float DampingLikeRing = 6f;
+        private const float SpringScaleDamping = 0.5f;   // a little air drag, so the scale does not slide for ever on the bench
 
         [MenuItem("Lab/1 Fix floor fall and UI")]
         private static void Run()
@@ -51,16 +51,19 @@ namespace PhysicsLab.Lab.EditorTools
 
             Rigidbody body = scale.GetComponent<Rigidbody>();
             Undo.RecordObject(body, "Fix spring scale body");
-            // Freeze Y and rotation, like the ring (constraints 116). Damping stops it sliding.
-            body.constraints = RigidbodyConstraints.FreezePositionY | RigidbodyConstraints.FreezeRotation;
-            body.linearDamping = DampingLikeRing;
+            // Real gravity: only the turn is frozen, so the scale falls and rests on what is under it.
+            body.constraints = RigidbodyConstraints.FreezeRotation;
+            body.useGravity = true;
+            body.linearDamping = SpringScaleDamping;
             body.interpolation = RigidbodyInterpolation.None;
-            log.AppendLine("  Spring scale: Y and rotation frozen, damping 6.");
+            log.AppendLine("  Spring scale: gravity on, only the turn is frozen.");
 
             if (scale.GetComponentInChildren<Collider>() == null) AddFittedBox(scale.gameObject, log);
             else log.AppendLine("  Spring scale: already has a collider.");
 
-            AddIfMissing<HoldInPlaceOnRelease>(scale.gameObject, log);
+            // A scale that stays pinned when let go would hang in mid-air. Without the pin it falls and rests on a surface.
+            HoldInPlaceOnRelease pin = scale.GetComponent<HoldInPlaceOnRelease>();
+            if (pin != null) Undo.DestroyObjectImmediate(pin);
             AddIfMissing<ReturnIfFallen>(scale.gameObject, log);
             EditorUtility.SetDirty(scale.gameObject);
             return scale;

@@ -30,6 +30,7 @@ namespace PhysicsLab.Lab.Rope
         [SerializeField] private Collider[] ignoreCollisionWith;
 
         private LineRenderer _line;
+        private RopeStrand _strand;   // the simulated string. When there is one, it draws instead of this class
         private Vector3[] _drawPoints;
         private Vector3[] _arc;
         private Vector3[] _guidePoints;
@@ -49,6 +50,12 @@ namespace PhysicsLab.Lab.Rope
 
         /// <summary>The top of the pulley wheel this string runs over, or null when it runs free.</summary>
         public Transform Guide => guide;
+
+        // Read-only views for RopeStrand, which draws this arm.
+        public Transform RingAnchor => ringAnchor;
+        public Transform EndAnchor => endAnchor;
+        public float WidthMetres => widthMetres;
+        public int SlackSide => slackSide;
         public bool IsTaut => Link != null && Link.overshoot > -StraightEnoughMetres;
 
         /// <summary>Changes the string length. Used by the builder and, later, by a "length" setting.</summary>
@@ -62,6 +69,7 @@ namespace PhysicsLab.Lab.Rope
                 return;
             }
 
+            _strand = GetComponent<RopeStrand>();
             _guidePoints = guide != null ? new Vector3[1] : new Vector3[0];
             Link = new RopeLink { guides = _guidePoints, length = lengthMetres };
             _arc = new Vector3[ArcPointCount];
@@ -93,6 +101,8 @@ namespace PhysicsLab.Lab.Rope
         // LateUpdate runs after physics, so the string never lags behind the ring or the mass.
         private void LateUpdate()
         {
+            if (_strand != null) return;   // RopeStrand draws this string
+
             Vector3 start = ringAnchor.position;
             Vector3 end = endAnchor.position;
 

@@ -37,6 +37,30 @@ namespace PhysicsLab.Lab.EditorTools
             log.AppendLine($"  {pulley.name}: wheel axle {Format(axle)}, clamp side {Format(clampSide)} (in the pulley's own space).");
         }
 
+        /// <summary>
+        /// The wheel of a pulley in world space: its centre and its radius. The radius is half of the biggest
+        /// size of the wheel mesh, because the wheel is a flat disc (the thin side is the axle).
+        /// Returns false when the wheel mesh is not found.
+        /// </summary>
+        public static bool TryMeasureWheel(Pulley pulley, out Vector3 center, out float radius)
+        {
+            center = pulley.transform.position;
+            radius = 0f;
+
+            MeshFilter wheel = FindPart(pulley.transform, WheelName);
+            if (wheel == null || wheel.sharedMesh == null) return false;
+
+            Bounds mesh = wheel.sharedMesh.bounds;
+            Vector3 scale = wheel.transform.lossyScale;
+            float sizeX = mesh.size.x * Mathf.Abs(scale.x);
+            float sizeY = mesh.size.y * Mathf.Abs(scale.y);
+            float sizeZ = mesh.size.z * Mathf.Abs(scale.z);
+
+            center = wheel.transform.TransformPoint(mesh.center);
+            radius = 0.5f * Mathf.Max(sizeX, Mathf.Max(sizeY, sizeZ));
+            return true;
+        }
+
         // The wheel mesh is a thin disc. Its smallest size (in world metres, so scale is counted) is the axle.
         private static Vector3 ThinnestAxis(MeshFilter wheel, Transform pulley, StringBuilder log, string pulleyName)
         {

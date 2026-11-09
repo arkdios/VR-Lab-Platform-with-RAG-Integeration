@@ -94,7 +94,7 @@ namespace PhysicsLab.Lab.EditorTools
             RopeArm arm3 = MakeArm(strings, "Arm_Scale", stringMaterial);
             Transform hook3 = MakeRingHook(ring, "RingHook_Scale", hookEye.position, ringRadius);
             var scaleIgnore = new List<Collider>(ringColliders);
-            if (tableCollider != null) scaleIgnore.Add(tableCollider);
+            // The table is not on this list: the scale has gravity now, so it must rest on the table.
             ConfigureArm(arm3, hook3, null, hookEye, ScaleArmMetres, +1, scaleIgnore);
 
             RopeArm arm4 = MakeArm(strings, "Arm_Free", stringMaterial);
@@ -178,7 +178,7 @@ namespace PhysicsLab.Lab.EditorTools
             float massHalfWidth = massRenderer != null
                 ? Mathf.Max(massRenderer.bounds.extents.x, massRenderer.bounds.extents.z)
                 : 0.02f;
-            Transform groove = MakeGroovePoint(pulley, center, tableRadius + massHalfWidth + 0.01f);
+            Transform groove = MakeGroovePoint(pulley, center, tableRadius + massHalfWidth + 0.01f, log);
             Rigidbody massBody = PrepareMass(massObject, pulley);
             SetObject(pulley, "massBody", massBody);
 
@@ -201,10 +201,29 @@ namespace PhysicsLab.Lab.EditorTools
             return arm;
         }
 
-        // The top of the pulley wheel, moved outward so the hanging string is at hangRadius from the table centre.
-        private static Transform MakeGroovePoint(Pulley pulley, Transform center, float hangRadius)
+        // Where the string leaves the pulley. With a measured wheel, this is the corner of the two straight runs that touch
+        // the wheel: along the table over the top of the wheel, then straight down its outer side. So the string never
+        // cuts through the wheel. hangRadius is the closest the hanging string may come to the table centre, so a mass
+        // never touches the table. Without a wheel mesh it falls back to the top of the whole pulley.
+        private static Transform MakeGroovePoint(Pulley pulley, Transform center, float hangRadius, StringBuilder log)
         {
             Transform groove = GetOrCreateChild(pulley.transform, "GroovePoint");
+            if (LabPulleyAxle.TryMeasureWheel(pulley, out Vector3 wheelCenter, out float wheelRadius))
+            {
+                Vector3 away = wheelCenter - center.position;   // from the table centre out to the wheel
+                away.y = 0f;
+                away = away.sqrMagnitude < 1e-8f ? Vector3.right : away.normalized;
+
+                Vector3 corner = wheelCenter + Vector3.up * wheelRadius + away * wheelRadius;
+                Vector3 flatCorner = corner - center.position;
+                flatCorner.y = 0f;
+                float reach1 = Mathf.Max(0f, hangRadius - flatCorner.magnitude);   // moves out only when the mass would touch the table
+                groove.position = corner + away * reach1;
+                log.AppendLine($"  {pulley.name}: wheel radius {wheelRadius:0.000} m. The string runs over its top and down its outer side.");
+                return groove;
+            }
+
+            log.AppendLine($"  Warning: {pulley.name}: wheel mesh not found, so the string leaves from the top of the whole pulley.");
             Renderer renderer = pulley.GetComponent<Renderer>();
             Vector3 top = renderer != null
                 ? new Vector3(renderer.bounds.center.x, renderer.bounds.max.y, renderer.bounds.center.z)

@@ -34,6 +34,11 @@ namespace PhysicsLab.Lab
 
         // Reads held, attached to and status for every object. Made on first use.
         private LabStatusReader Status => _status ??= new LabStatusReader(ring, springScale);
+
+        /// <summary>
+        /// The numbers kept when the ring last came to rest in the current case. MeasurementRecorder saves these.
+        /// </summary>
+        public StepMeasurement CurrentMeasurement => steps.Measurement;
         private string _heldObjectId = string.Empty;
         private string _selectedObjectId = string.Empty;
         private Vector3 _lastLoggedRingPosition;
@@ -90,6 +95,9 @@ namespace PhysicsLab.Lab
             {
                 t_ms = SessionClock.NowMs,
                 current_step = steps.CurrentStepId,
+                step_stage = steps.StepStage,
+                case_id = steps.CaseId,
+                failed_checks = steps.CopyFailedChecks(),
                 step_completed = steps.IsCurrentStepComplete,
                 step_index = steps.CurrentIndex,
                 step_count = steps.StepCount,
@@ -277,7 +285,8 @@ namespace PhysicsLab.Lab
         {
             id = springScaleObject.ObjectId,
             object_position = ToTableSpace(springScale.transform.position),
-            reading_n = springScale.ReadingNewtons
+            reading_n = springScale.ReadingNewtons,
+            angle_deg = RoundToTenth(springScale.StringAngleDegrees)
         };
 
         /// <summary>
@@ -290,6 +299,8 @@ namespace PhysicsLab.Lab
             new Vector3(RoundToMillimetre(value.x), RoundToMillimetre(value.y), RoundToMillimetre(value.z));
 
         private static float RoundToMillimetre(float metres) => Mathf.Round(metres * 1000f) / 1000f;
+
+        private static float RoundToTenth(float value) => Mathf.Round(value * 10f) / 10f;
 
         // Invariant culture keeps "0.2" from becoming "0,2" on some foreign browser.
         private static string Format(float value) => value.ToString("0.###", CultureInfo.InvariantCulture);

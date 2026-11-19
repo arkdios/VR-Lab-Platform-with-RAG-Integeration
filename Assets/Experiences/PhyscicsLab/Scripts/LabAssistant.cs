@@ -137,6 +137,9 @@ namespace PhysicsLab.Lab
             payload.step_index = 0;
             payload.step_count = 0;
             payload.step_elapsed_s = 0f;
+            payload.step_stage = string.Empty;
+            payload.case_id = string.Empty;
+            payload.failed_checks = new StepCheckState[0];
         }
 
         private void OnResult(PendingRequest pending, ChatResult result)

@@ -19,6 +19,8 @@ namespace PhysicsLab.Lab.EditorTools
         private const string MaterialFolderParent = "Assets/Experiences/PhyscicsLab";
         private const string MaterialFolder = MaterialFolderParent + "/Materials";
         private const string GlowMaterialPath = MaterialFolder + "/SlotGlow.mat";
+        private const int ClampSlotCount = 72;               // one spot every 5 degrees: every angle of Table 1 is a multiple of 5
+        private const float ClampMarkerMetres = 0.02f;       // thin glow discs, so spots 3.5 cm apart do not overlap
         private const float PulleyReachMetres = 0.6f;   // a held pulley cannot be pulled farther than this from the table centre
 
         [MenuItem("Lab/4 Build connect system")]
@@ -50,6 +52,8 @@ namespace PhysicsLab.Lab.EditorTools
             SetObject(slotRing, "tableCenter", center);
             SetFloat(slotRing, "radiusMetres", ReadFloat(pulleys[0], "rimRadiusMetres"));
             SetObject(slotRing, "glowMaterial", glow);
+            SetInt(slotRing, "slotCount", ClampSlotCount);
+            SetFloat(slotRing, "markerDiameterMetres", ClampMarkerMetres);
 
             var parts = new Object[pulleys.Length];
             Transform table = equipment.Find("Table");
@@ -68,7 +72,7 @@ namespace PhysicsLab.Lab.EditorTools
             SetObject(manager, "stateTracker", Object.FindAnyObjectByType<LabStateTracker>());
             SetFloat(manager, "snapRadiusMetres", 0.10f);
 
-            log.AppendLine("  Done. 24 clamp spots are made when Play starts. Grab a pulley and they glow.");
+            log.AppendLine($"  Done. {ClampSlotCount} clamp spots are made when Play starts. Grab a pulley and they glow.");
             return true;
         }
 
@@ -193,6 +197,15 @@ namespace PhysicsLab.Lab.EditorTools
                 return;
             }
             property.objectReferenceValue = value;
+            serialized.ApplyModifiedProperties();
+        }
+
+        private static void SetInt(Object owner, string field, int value)
+        {
+            var serialized = new SerializedObject(owner);
+            SerializedProperty property = serialized.FindProperty(field);
+            if (property == null) return;
+            property.intValue = value;
             serialized.ApplyModifiedProperties();
         }
 

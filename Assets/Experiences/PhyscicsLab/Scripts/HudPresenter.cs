@@ -25,6 +25,8 @@ namespace PhysicsLab.Lab
         [SerializeField] private float readingRefreshSeconds = 0.1f;
 
         private float _nextReadingRefresh;
+        private int _shownFailedCount = -1;   // what the step label shows now, so the text is rebuilt only when it changes
+        private bool _shownComplete;
 
         private void Awake()
         {
@@ -53,19 +55,27 @@ namespace PhysicsLab.Lab
 
             _nextReadingRefresh = Time.unscaledTime + readingRefreshSeconds;
             readingLabel.SetText("Spring scale: {0:2} N", springScale.ReadingNewtons); // no string garbage
+            if (StepStatusChanged()) RefreshStep();
         }
 
-        private void OnNextStepPressed() => steps.TryAdvance();
+        private void OnNextStepPressed() => steps.TryAdvanceWhenComplete();
 
         private void OnStepChanged(string previousId, string currentId) => RefreshStep();
 
         private void OnMeasurementAdded(MeasurementRow row) => RefreshMeasurementCount();
 
+        // Shows the step title and how many checks still fail. Next step works only once the step is done.
         private void RefreshStep()
         {
-            stepLabel.text = $"Step: {steps.CurrentStepId}";
-            nextStepButton.interactable = !steps.IsLastStep;
+            _shownFailedCount = steps.FailedCheckCount;
+            _shownComplete = steps.IsCurrentStepComplete;
+            string status = _shownComplete ? "done" : $"{_shownFailedCount} to fix";
+            stepLabel.text = $"{steps.CurrentStepTitle} ({status})";
+            nextStepButton.interactable = _shownComplete && !steps.IsLastStep;
         }
+
+        private bool StepStatusChanged() =>
+            steps.FailedCheckCount != _shownFailedCount || steps.IsCurrentStepComplete != _shownComplete;
 
         private void RefreshMeasurementCount() =>
             measurementCountLabel.text = $"Measurements: {recorder.Rows.Count}";

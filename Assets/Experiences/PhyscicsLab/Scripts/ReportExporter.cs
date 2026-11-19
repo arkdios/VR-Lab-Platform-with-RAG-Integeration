@@ -12,7 +12,8 @@ namespace PhysicsLab.Lab
     {
         private const string MeasurementHeader =
             "t_ms,step_id,pulley1_angle_deg,pulley1_mass_kg,pulley2_angle_deg,pulley2_mass_kg," +
-            "spring_reading_n,ring_offset_mm";
+            "spring_reading_n,ring_offset_mm," +
+            "case_id,pulley3_angle_deg,pulley3_mass_kg,scale_angle_deg,force_error_n,angle_error_deg,valid";
 
         [SerializeField] private MeasurementRecorder recorder;
         [SerializeField] private LabAssistant assistant;
@@ -50,6 +51,9 @@ namespace PhysicsLab.Lab
             Number(row.t_ms), Text(row.step_id),
             Number(row.pulley1_angle_deg), Number(row.pulley1_mass_kg),
             Number(row.pulley2_angle_deg), Number(row.pulley2_mass_kg),
-            Number(row.spring_reading_n), Number(row.ring_offset_mm));
+            Number(row.spring_reading_n), Number(row.ring_offset_mm),
+            Text(row.case_id), Number(row.pulley3_angle_deg), Number(row.pulley3_mass_kg),
+            Number(row.scale_angle_deg), Number(row.force_error_n), Number(row.angle_error_deg),
+            Text(row.valid ? "yes" : "no"));
     }
 }

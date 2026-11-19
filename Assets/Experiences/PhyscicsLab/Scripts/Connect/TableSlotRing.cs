@@ -4,7 +4,7 @@ using UnityEngine;
 namespace PhysicsLab.Lab.Connect
 {
     /// <summary>
-    /// Makes the ring of clamp spots around the table rim when the scene starts: 24 spots, one every 15 degrees.
+    /// Makes the ring of clamp spots around the table rim when the scene starts: 72 spots, one every 5 degrees.
     /// Each spot is a flat glowing disc that is hidden until a part is held. Put it on any object, and set
     /// the table centre and the rim radius. The spots sit at the same place the Pulley script puts a pulley.
     /// </summary>
@@ -13,7 +13,7 @@ namespace PhysicsLab.Lab.Connect
         [SerializeField] private Transform tableCenter;
         [Tooltip("Distance from the table centre to a clamp, in metres. Same as the pulley rim radius.")]
         [SerializeField] private float radiusMetres = 0.4f;
-        [SerializeField, Range(4, 72)] private int slotCount = 24;
+        [SerializeField, Range(4, 72)] private int slotCount = 72;   // Table 1 uses 5, 30, 40, 80, 95, 100, 120 and 235 degrees
         [Tooltip("Material for the glow discs. An unlit material is best.")]
         [SerializeField] private Material glowMaterial;
         [SerializeField] private float markerDiameterMetres = 0.05f;

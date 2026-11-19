@@ -10,7 +10,7 @@ namespace PhysicsLab.Lab.EditorTools
     /// <summary>
     /// Menu: Lab > Scale hand parts.
     /// Makes the parts a hand picks up easier to grab in the headset: the spring scale, both hanging masses and the
-    /// spare hooked masses on the bench. The pulleys keep their real size (PulleyScale), because the clamp has to
+    /// spare hooked masses on the bench. The pulleys use PulleyScale, a small step up, because the clamp has to
     /// fit the table, and the wheel has to stay clear of the table legs. The table, ring, chair and bench stay as they are.
     /// It SETS the scale (it does not multiply), so running it twice gives the same result.
     /// Run it BEFORE Lab > 0. Lab > 0 works out colliders, hang spots and string lengths from the new size.
@@ -18,7 +18,7 @@ namespace PhysicsLab.Lab.EditorTools
     public static class LabHandPartScale
     {
         private const float HandPartScale = 1.5f;   // spring scale and masses
-        private const float PulleyScale = 1.0f;     // the clamp grips the table, so the pulleys keep their real size
+        private const float PulleyScale = 1.25f;    // bigger to grab
         private const string EquipmentRootName = "LabEquipments";
         private const string PropsRootName = "LabProps (Temp)";
         private const string SpareMassPrefix = "HookedMass";   // the spare masses on the bench

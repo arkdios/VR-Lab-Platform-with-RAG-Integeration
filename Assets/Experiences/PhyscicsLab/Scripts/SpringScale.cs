@@ -22,6 +22,22 @@ namespace PhysicsLab.Lab
         public float ReadingNewtons =>
             tensionArm != null ? tensionArm.TensionNewtons : springConstant * HorizontalDistanceToRing();
 
+        /// <summary>
+        /// Angle of the string that holds the scale, in degrees, counter-clockwise, 0 to 360. It is the same
+        /// convention as Pulley.AngleDegrees. With a string arm it runs from the ring anchor to the hook, so the
+        /// hook counts, not the middle of the scale body.
+        /// </summary>
+        public float StringAngleDegrees
+        {
+            get
+            {
+                Vector3 from = tensionArm != null ? tensionArm.RingAnchor.position : ring.position;
+                Vector3 to = tensionArm != null ? tensionArm.EndAnchor.position : transform.position;
+                Vector3 along = to - from;
+                return Mathf.Repeat(Mathf.Atan2(along.z, along.x) * Mathf.Rad2Deg, 360f);
+            }
+        }
+
         private void Awake()
         {
             if (tensionArm == null) AddJointToRing();

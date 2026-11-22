@@ -240,7 +240,8 @@ namespace PhysicsLab.Lab
             {
                 if (pulley.ObjectId != saved.id) continue;
                 pulley.SetAngle(saved.angle_deg);
-                pulley.SetMass(saved.mass_kg);
+                // The student hangs the masses by hand, so the loop owns the mass. A saved number would not match what hangs on it.
+                if (pulley.MassObject.GetComponent<MassHangPoint>() == null) pulley.SetMass(saved.mass_kg);
                 return;
             }
         }

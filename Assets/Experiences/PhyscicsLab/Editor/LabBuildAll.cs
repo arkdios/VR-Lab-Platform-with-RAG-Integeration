@@ -23,7 +23,9 @@ namespace PhysicsLab.Lab.EditorTools
                       && LabStringBuilder.Run(log)
                       && LabConnectBuilder.Run(log)
                       && LabCursorBuilder.Run(log)
+                      && LabHangBuilder.AddSpareMasses(log)
                       && LabPropsBuilder.Run(log)
+                      && LabHangBuilder.Run(log)
                       && LabPolish.Run(log)
                       && LabStrandBuilder.Run(log);
 

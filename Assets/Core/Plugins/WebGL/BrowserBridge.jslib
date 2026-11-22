@@ -23,12 +23,17 @@ mergeInto(LibraryManager.library, {
     var buffer = _malloc(size);
     stringToUTF8(text, buffer, size);
     return buffer;
-  }
+  },
 
   // Copies files written under persistentDataPath into the browser's IndexedDB.
+  // The try block keeps a missing file system from stopping the page.
   SyncPersistentFiles: function () {
-       FS.syncfs(false, function (error) {
-         if (error) console.warn('[BrowserBridge] syncfs failed', error);
-         });
+    try {
+      FS.syncfs(false, function (error) {
+        if (error) console.warn('[BrowserBridge] syncfs failed', error);
+      });
+    } catch (e) {
+      console.warn('[BrowserBridge] syncfs is not available', e);
+    }
   }
 });

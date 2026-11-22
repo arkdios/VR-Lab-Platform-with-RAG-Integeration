@@ -19,6 +19,9 @@ namespace PhysicsLab.Lab.EditorTools
     public static class LabStrandBuilder
     {
         private const string WheelObjectName = "RopeWheel";
+        private const string TableDiscName = "Table_Disk";   // the drawn top of the force table
+        private const string ScaleArmName = "Arm_Scale";
+        private const string RimGuideName = "RimGuide";
 
         [MenuItem("Lab/Bake strings")]
         private static void Menu()
@@ -40,8 +43,7 @@ namespace PhysicsLab.Lab.EditorTools
             }
 
             RopeArm[] arms = strings.GetComponentsInChildren<RopeArm>();
-            var strands = new RopeStrand[arms.Length];
-            for (int i = 0; i < arms.Length; i++) strands[i] = PrepareStrand(arms[i], log);
+            RopeStrand[] strands = PrepareStrands(arms, FindTableDisc(equipment, log), log);
 
             Physics.SyncTransforms();   // the new wheels must be known to physics before the strings settle
             for (int i = 0; i < arms.Length; i++) BakeStrand(arms[i], strands[i], log);
@@ -72,6 +74,91 @@ namespace PhysicsLab.Lab.EditorTools
             EditorUtility.SetDirty(strand);
             EditorUtility.SetDirty(arm.GetComponent<LineRenderer>());
             log.AppendLine($"  {arm.name}: string baked, {strand.PointCount} points.");
+        }
+
+        // ---------- the table top ----------
+
+        // A strand for every arm, each one told about the table top. The scale arm also gets its rim guide.
+        private static RopeStrand[] PrepareStrands(RopeArm[] arms, Renderer tableDisc, StringBuilder log)
+        {
+            var strands = new RopeStrand[arms.Length];
+            for (int i = 0; i < arms.Length; i++)
+            {
+                strands[i] = PrepareStrand(arms[i], log);
+                SetTableDisc(strands[i], tableDisc);
+                AddRimGuide(arms[i], tableDisc, log);
+            }
+            return strands;
+        }
+
+        // The drawn top of the force table. The strings cannot go into it. Every strand reads its size at start-up.
+        private static Renderer FindTableDisc(Transform equipment, StringBuilder log)
+        {
+            Transform table = equipment.Find("Table");
+            if (table != null)
+            {
+                foreach (Renderer part in table.GetComponentsInChildren<Renderer>(true))
+                {
+                    if (part.name != TableDiscName) continue;
+
+                    Bounds box = part.bounds;
+                    log.AppendLine($"  Table top: radius {Mathf.Min(box.extents.x, box.extents.z):0.000} m, from y {box.min.y:0.000} to {box.max.y:0.000} m. The strings cannot go into it.");
+                    return part;
+                }
+            }
+
+            log.AppendLine($"  Warning: no {TableDiscName} found under Table, so the strings can go through the table top.");
+            return null;
+        }
+
+        private static void SetTableDisc(RopeStrand strand, Renderer disc)
+        {
+            var serialized = new SerializedObject(strand);
+            SerializedProperty property = serialized.FindProperty("tableDisc");
+            if (property == null)
+            {
+                Debug.LogError("[LabStrandBuilder] RopeStrand has no serialized field 'tableDisc'.", strand);
+                return;
+            }
+
+            property.objectReferenceValue = disc;
+            serialized.ApplyModifiedProperties();
+        }
+
+        // The spring scale lies on the bench, lower than the table top and outside its edge, so its string must bend
+        // over the edge. A RimGuide gives the string that bend point, the way a pulley does. Then the string, the length
+        // and the pull on the ring agree. Without it the string runs straight through the table.
+        private static void AddRimGuide(RopeArm arm, Renderer tableDisc, StringBuilder log)
+        {
+            if (arm.name != ScaleArmName || tableDisc == null) return;
+
+            Transform point = arm.transform.Find(RimGuideName);
+            if (point == null)
+            {
+                var created = new GameObject(RimGuideName);
+                Undo.RegisterCreatedObjectUndo(created, "Create rim guide");
+                created.transform.SetParent(arm.transform, false);
+                point = created.transform;
+            }
+
+            RimGuide guide = point.GetComponent<RimGuide>();
+            if (guide == null) guide = Undo.AddComponent<RimGuide>(point.gameObject);
+            SetReference(guide, "ringAnchor", arm.RingAnchor);
+            SetReference(guide, "endAnchor", arm.EndAnchor);
+            SetReference(guide, "tableDisc", tableDisc);
+            SetReference(arm, "guide", point);
+            guide.Place();
+            log.AppendLine($"  {arm.name}: bends over the edge of the table top at ({point.position.x:0.000}, {point.position.y:0.000}, {point.position.z:0.000}).");
+        }
+
+        private static void SetReference(Object owner, string field, Object value)
+        {
+            var serialized = new SerializedObject(owner);
+            SerializedProperty property = serialized.FindProperty(field);
+            if (property == null) return;
+
+            property.objectReferenceValue = value;
+            serialized.ApplyModifiedProperties();
         }
 
         // ---------- the wheel ----------

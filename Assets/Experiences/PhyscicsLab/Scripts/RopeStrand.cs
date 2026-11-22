@@ -36,6 +36,8 @@ namespace PhysicsLab.Lab.Rope
         [SerializeField, Range(0f, 1f)] private float friction = 0.5f;
         [Tooltip("The round wheels this string runs over. Filled in by Lab > 0.")]
         [SerializeField] private SphereCollider[] wheels;
+        [Tooltip("The round top of the force table. The string cannot go into it. Filled in by Lab > Bake strings.")]
+        [SerializeField] private Renderer tableDisc;
         [SerializeField, HideInInspector] private Vector3[] restingPoints;
 
         private RopeArm _arm;
@@ -46,6 +48,11 @@ namespace PhysicsLab.Lab.Rope
         private float _segment;
         private readonly RaycastHit[] _hits = new RaycastHit[BufferSize];
         private readonly Collider[] _overlaps = new Collider[BufferSize];
+        private bool _hasDisc;           // the size of the table top, read once in Prepare
+        private Vector3 _discCentre;
+        private float _discRadius;
+        private float _discTop;
+        private float _discBottom;
 
         /// <summary>Number of points in the chain, or 0 when the strand is not set up yet.</summary>
         public int PointCount => _pos == null ? 0 : _pos.Length;
@@ -92,6 +99,8 @@ namespace PhysicsLab.Lab.Rope
             }
 
             ApplyLineSettings();
+            ReadTableDisc();
+            StartChain();
             StartChain();
             Draw();
             return true;
@@ -218,6 +227,7 @@ namespace PhysicsLab.Lab.Rope
                 _pos[i + 1] -= gap * (error * shareB);
             }
             PushOutOfWheels();
+            PushOutOfDisc();
             PinEnds();
         }
 
@@ -239,6 +249,124 @@ namespace PhysicsLab.Lab.Rope
                     if (distance < reach && distance > 1e-6f) _pos[i] = center + offset * (reach / distance);
                 }
             }
+        }
+
+        // ---------- the table top ----------
+
+        private enum PlateFace { Unknown, Above, Side, Below }
+
+        // The size of the table top, from the box of its drawn part. Read at start-up, so it follows the table.
+        private void ReadTableDisc()
+        {
+            _hasDisc = tableDisc != null;
+            if (!_hasDisc) return;
+
+            Bounds box = tableDisc.bounds;
+            _discCentre = box.center;
+            _discRadius = Mathf.Min(box.extents.x, box.extents.z);
+            _discTop = box.max.y;
+            _discBottom = box.min.y;
+        }
+
+        // The table top is a round plate. A point inside it is moved out, and so is the middle of every piece of
+        // string, so a piece cannot cut across the edge. This runs inside every length pass, so repairing the length
+        // can never pull the string back through the plate. The contact sweeps alone could not stop that: a point that
+        // ended a step inside the plate was invisible to the next sweep.
+        private void PushOutOfDisc()
+        {
+            if (!_hasDisc) return;
+
+            int last = _pos.Length - 1;
+            for (int i = 1; i < last; i++) PushPointOutOfDisc(i);
+            for (int i = 0; i < last; i++) PushPieceOutOfDisc(i, last);
+        }
+
+        private void PushPointOutOfDisc(int i)
+        {
+            Vector3 push = DiscPush(_pos[i], _old[i], out bool fromAbove);
+            if (push == Vector3.zero) return;
+
+            _pos[i] += push;
+            if (fromAbove) GripOnPlate(i, push.y);
+        }
+
+        // The piece between point i and point i + 1. Only its middle is tested.
+        private void PushPieceOutOfDisc(int i, int last)
+        {
+            Vector3 middle = (_pos[i] + _pos[i + 1]) * 0.5f;
+            Vector3 middleBefore = (_old[i] + _old[i + 1]) * 0.5f;
+            Vector3 push = DiscPush(middle, middleBefore, out _);
+            if (push == Vector3.zero) return;
+
+            bool startFree = i > 0;                          // the first and the last point are pinned
+            bool endFree = i + 1 < last;
+            float share = startFree && endFree ? 1f : 2f;    // one free end moves twice as far, so the middle still moves by push
+            if (startFree) _pos[i] += push * share;
+            if (endFree) _pos[i + 1] += push * share;
+        }
+
+        // How far a point must move to leave the plate. Zero when it is outside. The point leaves by the face it was on
+        // one step ago (above, beside or below). With no clear history it leaves by the nearest face.
+        private Vector3 DiscPush(Vector3 point, Vector3 before, out bool fromAbove)
+        {
+            fromAbove = false;
+            float gap = radiusMetres + SkinMetres;           // the string stays this far off the plate
+            float top = _discTop + gap;
+            float bottom = _discBottom - gap;
+            float rim = _discRadius + gap;
+            if (point.y >= top || point.y <= bottom) return Vector3.zero;
+
+            float dx = point.x - _discCentre.x;
+            float dz = point.z - _discCentre.z;
+            float flatSquared = dx * dx + dz * dz;
+            if (flatSquared >= rim * rim) return Vector3.zero;
+
+            float flat = Mathf.Sqrt(flatSquared);
+            PlateFace face = FaceBefore(before, top, bottom, rim);
+            if (face == PlateFace.Unknown) face = NearestFace(top - point.y, point.y - bottom, rim - flat);
+
+            fromAbove = face == PlateFace.Above;
+            if (face == PlateFace.Above) return Vector3.up * (top - point.y);
+            if (face == PlateFace.Below) return Vector3.down * (point.y - bottom);
+            return RadialPush(dx, dz, flat, rim);
+        }
+
+        // The face the point was on one step ago. Unknown when it was inside the plate already.
+        private PlateFace FaceBefore(Vector3 before, float top, float bottom, float rim)
+        {
+            if (before.y >= top - SkinMetres) return PlateFace.Above;
+            if (before.y <= bottom + SkinMetres) return PlateFace.Below;
+
+            float dx = before.x - _discCentre.x;
+            float dz = before.z - _discCentre.z;
+            float edge = rim - SkinMetres;
+            return dx * dx + dz * dz >= edge * edge ? PlateFace.Side : PlateFace.Unknown;
+        }
+
+        private static PlateFace NearestFace(float up, float down, float outward)
+        {
+            if (up <= down && up <= outward) return PlateFace.Above;
+            return down <= outward ? PlateFace.Below : PlateFace.Side;
+        }
+
+        // Straight out from the middle of the plate to its rim.
+        private static Vector3 RadialPush(float dx, float dz, float flat, float rim)
+        {
+            if (flat < 1e-6f) return Vector3.right * rim;    // exactly on the axis: any direction will do
+            return new Vector3(dx, 0f, dz) * ((rim - flat) / flat);
+        }
+
+        // Grip on the top face, the same rule as StopAtSurface: friction can remove as much sideways move as
+        // friction times the lift. So a slack string stays where it lies on the plate, and a pulled one slides.
+        private void GripOnPlate(int i, float lift)
+        {
+            Vector3 sideways = _pos[i] - _old[i];
+            sideways.y = 0f;
+            float length = sideways.magnitude;
+            float grip = friction * lift;
+            float keep = length <= grip ? 0f : 1f - grip / length;
+            _pos[i].x = _old[i].x + sideways.x * keep;
+            _pos[i].z = _old[i].z + sideways.z * keep;
         }
 
         private static float WheelRadius(SphereCollider wheel)

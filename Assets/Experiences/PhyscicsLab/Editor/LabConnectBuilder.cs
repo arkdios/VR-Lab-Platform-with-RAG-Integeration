@@ -38,8 +38,8 @@ namespace PhysicsLab.Lab.EditorTools
             if (equipment == null) return Fail(log, "no object named LabEquipments.");
 
             Transform center = equipment.Find("TableCenter");
-            Pulley[] pulleys = { GetPulley(equipment, "Pulley 1"), GetPulley(equipment, "Pulley 2") };
-            if (center == null || pulleys[0] == null || pulleys[1] == null)
+            Pulley[] pulleys = LabPulleyRig.FindAll(equipment);   // two pulleys, or three with Case D
+            if (center == null || pulleys.Length < 2)
             {
                 return Fail(log, "LabEquipments must hold TableCenter, Pulley 1 and Pulley 2.");
             }
@@ -152,12 +152,6 @@ namespace PhysicsLab.Lab.EditorTools
         }
 
         // ---------- helpers ----------
-
-        private static Pulley GetPulley(Transform equipment, string pulleyName)
-        {
-            Transform t = equipment.Find(pulleyName);
-            return t != null ? t.GetComponent<Pulley>() : null;
-        }
 
         private static Transform GetOrCreateChild(Transform parent, string childName)
         {

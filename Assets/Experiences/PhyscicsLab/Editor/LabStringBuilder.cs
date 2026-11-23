@@ -13,7 +13,8 @@ namespace PhysicsLab.Lab.EditorTools
     /// Menu: Lab > 2 Build real string.
     /// Builds the real string from the force table slides: four arms, all tied to the ring.
     /// Arm 1 and 2 run over Pulley 1 and 2 to the hanging masses. Arm 3 ends at the spring scale.
-    /// Arm 4 is a free end that lies on the table. Safe to run twice: it reuses what it made before.
+    /// Arm 4 runs over Pulley 3 to its mass when the scene has a Pulley 3 (Case D). Without a Pulley 3, arm 4 is
+    /// a free end that lies on the table. Safe to run twice: it reuses what it made before.
     /// Nothing is deleted. The old String_* line objects are only switched off.
     /// </summary>
     public static class LabStringBuilder
@@ -52,6 +53,7 @@ namespace PhysicsLab.Lab.EditorTools
             Transform center = equipment.Find("TableCenter");
             Pulley pulley1 = GetPulley(equipment, "Pulley 1");
             Pulley pulley2 = GetPulley(equipment, "Pulley 2");
+            Pulley pulley3 = GetPulley(equipment, "Pulley 3");   // only Case D needs it
             if (ring == null || table == null || pin == null || center == null || pulley1 == null || pulley2 == null)
             {
                 return Fail(log, "LabEquipments must hold Ring, Table, CenterPin, TableCenter, Pulley 1 and Pulley 2.");
@@ -80,7 +82,7 @@ namespace PhysicsLab.Lab.EditorTools
 
             Transform strings = GetOrCreateChild(equipment, "Strings");
             float ringRadius = RingRadius(ring);
-            Transform freeEnd = BuildFreeEnd(equipment, ring, stringMaterial, log);
+            Transform freeEnd = pulley3 == null ? BuildFreeEnd(equipment, ring, stringMaterial, log) : null;
 
             var ringColliders = new List<Collider>(ring.GetComponentsInChildren<Collider>());
             Collider tableCollider = table.GetComponent<Collider>();
@@ -97,9 +99,11 @@ namespace PhysicsLab.Lab.EditorTools
             // The table is not on this list: the scale has gravity now, so it must rest on the table.
             ConfigureArm(arm3, hook3, null, hookEye, ScaleArmMetres, +1, scaleIgnore);
 
-            RopeArm arm4 = MakeArm(strings, "Arm_Free", stringMaterial);
-            Transform hook4 = MakeRingHook(ring, "RingHook_Free", freeEnd.position, ringRadius);
-            ConfigureArm(arm4, hook4, null, freeEnd, FreeArmMetres, -1, new List<Collider>());
+            RopeArm arm4 = pulley3 != null
+                            ? BuildMassArm(strings, "Arm_Pulley3", pulley3, ring, ringBody, center, ringRadius, tableRadius,
+                                           ringColliders, tableCollider, stringMaterial, +1, log)
+                            : BuildFreeArm(strings, ring, freeEnd, stringMaterial);
+            SetFreeArmActive(equipment, strings, pulley3 == null, log);
 
             SetObject(scale, "tensionArm", arm3);
 
@@ -166,6 +170,29 @@ namespace PhysicsLab.Lab.EditorTools
         }
 
         // ---------- arms ----------
+
+        // The fourth arm when there is no Pulley 3: a loose end that lies on the table.
+        private static RopeArm BuildFreeArm(Transform strings, Transform ring, Transform freeEnd, Material material)
+        {
+            RopeArm arm = MakeArm(strings, "Arm_Free", material);
+            Transform hook = MakeRingHook(ring, "RingHook_Free", freeEnd.position, RingRadius(ring));
+            ConfigureArm(arm, hook, null, freeEnd, FreeArmMetres, -1, new List<Collider>());
+            return arm;
+        }
+
+        // With a Pulley 3, the free arm and its loose end are not used, so they are switched off (nothing is deleted).
+        // Without a Pulley 3, they are switched on again.
+        private static void SetFreeArmActive(Transform equipment, Transform strings, bool active, StringBuilder log)
+        {
+            foreach (Transform part in new[] { strings.Find("Arm_Free"), equipment.Find("FreeEnd") })
+            {
+                if (part == null || part.gameObject.activeSelf == active) continue;
+
+                Undo.RecordObject(part.gameObject, "Free arm on or off");
+                part.gameObject.SetActive(active);
+            }
+            if (!active) log.AppendLine("  Pulley 3 is there, so Arm_Free and FreeEnd are switched off.");
+        }
 
         private static RopeArm BuildMassArm(Transform strings, string armName, Pulley pulley, Transform ring,
             Rigidbody ringBody, Transform center, float ringRadius, float tableRadius, List<Collider> ringColliders,

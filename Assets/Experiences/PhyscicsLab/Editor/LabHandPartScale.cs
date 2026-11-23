@@ -23,8 +23,8 @@ namespace PhysicsLab.Lab.EditorTools
         private const string PropsRootName = "LabProps (Temp)";
         private const string SpareMassPrefix = "HookedMass";   // the spare masses on the bench
 
-        private static readonly string[] PulleyNames = { "Pulley 1", "Pulley 2" };
-        private static readonly string[] MassNames = { "Mass 1", "Mass 2" };
+        private static readonly string[] PulleyNames = { "Pulley 1", "Pulley 2", "Pulley 3" };   // Pulley 3 only exists for Case D
+        private static readonly string[] MassNames = { "Mass 1", "Mass 2", "Mass 3" };
 
         [MenuItem("Lab/Scale hand parts")]
         private static void Menu()

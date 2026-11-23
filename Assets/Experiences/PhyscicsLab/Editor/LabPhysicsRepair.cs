@@ -40,8 +40,8 @@ namespace PhysicsLab.Lab.EditorTools
             Transform pin = equipment.Find("CenterPin");
             Transform ring = equipment.Find("Ring");
             Transform center = equipment.Find("TableCenter");
-            Pulley[] pulleys = { GetPulley(equipment, "Pulley 1"), GetPulley(equipment, "Pulley 2") };
-            if (table == null || pin == null || ring == null || center == null || pulleys[0] == null || pulleys[1] == null)
+            Pulley[] pulleys = LabPulleyRig.FindAll(equipment);   // two pulleys, or three with Case D
+            if (table == null || pin == null || ring == null || center == null || pulleys.Length < 2)
             {
                 return Fail(log, "LabEquipments must hold Table, CenterPin, Ring, TableCenter, Pulley 1 and Pulley 2.");
             }
@@ -225,12 +225,6 @@ namespace PhysicsLab.Lab.EditorTools
             if (component == null) return;
             Undo.DestroyObjectImmediate(component);
             log.AppendLine($"  {go.name}: {typeof(T).Name} removed.");
-        }
-
-        private static Pulley GetPulley(Transform equipment, string pulleyName)
-        {
-            Transform t = equipment.Find(pulleyName);
-            return t != null ? t.GetComponent<Pulley>() : null;
         }
 
         private static T ReadReference<T>(Object owner, string field) where T : Object

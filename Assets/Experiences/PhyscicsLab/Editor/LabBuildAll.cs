@@ -18,7 +18,8 @@ namespace PhysicsLab.Lab.EditorTools
         private static void Run()
         {
             var log = new StringBuilder("[LabBuildAll]\n");
-            bool ok = LabSceneFixes.RunAll(log)
+            bool ok = LabThirdPulleyBuilder.Run(log)
+                      && LabSceneFixes.RunAll(log)
                       && LabPhysicsRepair.Run(log)
                       && LabStringBuilder.Run(log)
                       && LabConnectBuilder.Run(log)
@@ -27,7 +28,8 @@ namespace PhysicsLab.Lab.EditorTools
                       && LabPropsBuilder.Run(log)
                       && LabHangBuilder.Run(log)
                       && LabPolish.Run(log)
-                      && LabStrandBuilder.Run(log);
+                      && LabStrandBuilder.Run(log)
+                      && LabBoardBuilder.Run(log);
 
             if (ok)
             {

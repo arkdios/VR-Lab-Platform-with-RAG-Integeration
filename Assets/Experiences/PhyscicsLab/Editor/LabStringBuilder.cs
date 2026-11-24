@@ -80,6 +80,11 @@ namespace PhysicsLab.Lab.EditorTools
             TableBounds scaleBounds = scale.GetComponent<TableBounds>();
             if (scaleBounds != null) SetFloat(scaleBounds, "maxRadiusMetres", ScaleReachMetres);
 
+            // The scale is dragged in 3D, like the masses. Without this the mouse keeps it at its own height, so after it
+            // falls from the table to the bench the student cannot lift it back onto the table.
+            LabObject scaleObject = scale.GetComponent<LabObject>();
+            if (scaleObject != null) LabSerialized.SetBool(scaleObject, "freeDrag", true);
+
             Transform strings = GetOrCreateChild(equipment, "Strings");
             float ringRadius = RingRadius(ring);
             Transform freeEnd = pulley3 == null ? BuildFreeEnd(equipment, ring, stringMaterial, log) : null;
@@ -210,6 +215,7 @@ namespace PhysicsLab.Lab.EditorTools
             SetObject(pulley, "massBody", massBody);
 
             Transform hook = MakeRingHook(ring, "RingHook_" + pulley.name.Replace(" ", ""), groove.position, ringRadius);
+            AddHookAimer(hook, groove, ringRadius);
 
             // Hang the mass straight below the groove, so the string starts exactly taut.
             Undo.RecordObject(massObject.transform, "Hang mass");
@@ -287,6 +293,19 @@ namespace PhysicsLab.Lab.EditorTools
             Vector3 direction = flat.sqrMagnitude < 1e-8f ? Vector3.right : flat.normalized;
             hook.position = ring.position + direction * radius; // on the ring edge, facing where the arm goes
             return hook;
+        }
+
+        // The knot on the ring turns toward the groove point while the lab runs, so a pulley clamped at another spot
+        // still has its string start on the near side of the ring. It is also placed once now, so the string is baked right.
+        private static void AddHookAimer(Transform hook, Transform groove, float ringRadius)
+        {
+            RingHookAimer aimer = hook.GetComponent<RingHookAimer>();
+            if (aimer == null) aimer = Undo.AddComponent<RingHookAimer>(hook.gameObject);
+
+            SetObject(aimer, "ring", hook.parent);
+            SetObject(aimer, "groovePoint", groove);
+            SetFloat(aimer, "radiusMetres", ringRadius);
+            aimer.Aim();
         }
 
         private static RopeArm MakeArm(Transform strings, string armName, Material material)

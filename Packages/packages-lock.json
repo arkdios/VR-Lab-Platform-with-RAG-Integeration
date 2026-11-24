@@ -1,13 +1,13 @@
 {
   "dependencies": {
     "com.de-panther.webxr": {
-      "version": "0.25.0",
+      "version": "https://github.com/De-Panther/unity-webxr-export.git?path=/Packages/webxr#1f7a06c57867f300dabfa2bbbee85a6b03fa0005",
       "depth": 0,
-      "source": "registry",
+      "source": "git",
       "dependencies": {
         "com.unity.xr.management": "3.2.13"
       },
-      "url": "https://package.openupm.com"
+      "hash": "1f7a06c57867f300dabfa2bbbee85a6b03fa0005"
     },
     "com.de-panther.webxr-interactions": {
       "version": "0.25.0",

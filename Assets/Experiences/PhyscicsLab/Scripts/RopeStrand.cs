@@ -1,3 +1,4 @@
+using Unity.Profiling;
 using UnityEngine;
 
 namespace PhysicsLab.Lab.Rope
@@ -27,6 +28,7 @@ namespace PhysicsLab.Lab.Rope
         private const float LiftSearchMetres = 0.05f;    // how far above a point to look for the surface it sank into
         private const float WheelSavingPerRadius = 0.43f; // a round wheel saves this part of its radius against a path that cuts the corner (2 - pi/2)
         private const int BufferSize = 8;
+        private const float MinPieceMetres = 0.002f;     // the shortest piece between two points of the chain
 
         [Tooltip("Half the thickness the string takes up when it touches a surface.")]
         [SerializeField] private float radiusMetres = 0.002f;
@@ -53,6 +55,15 @@ namespace PhysicsLab.Lab.Rope
         private float _discRadius;
         private float _discTop;
         private float _discBottom;
+        private bool _tiedToPulley;      // true when the string must pass through the groove point of a pulley
+        private int _guideIndex = -1;    // the chain point held on the groove point, or -1 when there is none
+        private float _segmentUp;        // rest length of a piece between the ring and the groove point
+        private float _segmentDown;      // rest length of a piece between the groove point and the loop
+
+        // Names in the Unity Profiler (Window > Analysis > Profiler). They cost nothing when the Profiler is closed.
+        private static readonly ProfilerMarker MoveMarker = new ProfilerMarker("RopeStrand.Move");
+        private static readonly ProfilerMarker LengthMarker = new ProfilerMarker("RopeStrand.Lengths");
+        private static readonly ProfilerMarker ContactMarker = new ProfilerMarker("RopeStrand.Contact");
 
         /// <summary>Number of points in the chain, or 0 when the strand is not set up yet.</summary>
         public int PointCount => _pos == null ? 0 : _pos.Length;
@@ -100,7 +111,7 @@ namespace PhysicsLab.Lab.Rope
 
             ApplyLineSettings();
             ReadTableDisc();
-            StartChain();
+            _tiedToPulley = _arm.Guide != null && _arm.Guide.GetComponentInParent<Pulley>() != null;
             StartChain();
             Draw();
             return true;
@@ -130,13 +141,15 @@ namespace PhysicsLab.Lab.Rope
             if (restingPoints != null && restingPoints.Length == count) System.Array.Copy(restingPoints, _pos, count);
             else ShapeStart(length);
             System.Array.Copy(_pos, _old, count);
+            _guideIndex = FindGuideIndex(length);
+            UpdateSegmentLengths();
         }
 
         // A string that hugs a round wheel is a little shorter than the path the solver measures through the corner point.
         private float RestLength()
         {
             float saving = 0f;
-            if (wheels != null)
+            if (wheels != null && !_tiedToPulley)   // a string tied to the groove point is counted on the same corner path, so it saves nothing
             {
                 foreach (SphereCollider wheel in wheels)
                 {
@@ -178,14 +191,23 @@ namespace PhysicsLab.Lab.Rope
 
         private void Step(float dt)
         {
+            UpdateSegmentLengths();
             PinEnds();
-            MoveFreely(dt);
-            for (int pass = 0; pass < LengthPasses; pass++) KeepLengths(pass);
-            CollideWithRoom();
-            for (int pass = 0; pass < RepairPasses; pass++) KeepLengths(pass);
+            using (MoveMarker.Auto()) MoveFreely(dt);
+            using (LengthMarker.Auto())
+            {
+                for (int pass = 0; pass < LengthPasses; pass++) KeepLengths(pass);
+            }
+            using (ContactMarker.Auto()) CollideWithRoom();
+            using (LengthMarker.Auto())
+            {
+                for (int pass = 0; pass < RepairPasses; pass++) KeepLengths(pass);
+            }
         }
 
-        // Both ends follow the ring and the loop exactly.
+        // Both ends follow the ring and the loop exactly. A string over a pulley is also held on the groove point,
+        // so it always runs over the wheel, wherever the pulley is clamped. Before, nothing held the string there,
+        // and it could lie on the edge of the table next to the pulley.
         private void PinEnds()
         {
             int last = _pos.Length - 1;
@@ -193,7 +215,47 @@ namespace PhysicsLab.Lab.Rope
             _old[0] = _pos[0];
             _pos[last] = _arm.EndAnchor.position;
             _old[last] = _pos[last];
+            if (_guideIndex > 0)
+            {
+                _pos[_guideIndex] = _arm.Guide.position;
+                _old[_guideIndex] = _pos[_guideIndex];
+            }
         }
+
+        // The point of the chain that is held on the groove point: the end of the part that lies on the table.
+        // The part on the table is as long as the distance from the ring to the groove point (it stays about the same
+        // for every clamp spot, because all spots are on the rim). Returns -1 when the string does not run over a pulley.
+        private int FindGuideIndex(float length)
+        {
+            if (!_tiedToPulley) return -1;
+
+            int last = _pos.Length - 1;
+            float onTable = Vector3.Distance(_arm.RingAnchor.position, _arm.Guide.position);
+            return Mathf.Clamp(Mathf.RoundToInt(last * onTable / length), 1, last - 1);
+        }
+
+        // With a pulley the chain has two parts. The hanging part (groove point to loop) is as long as the distance
+        // to the loop, so it is straight. The part on the table (ring to groove point) gets all the rest of the string.
+        // Without a pulley both parts are the same length.
+        private void UpdateSegmentLengths()
+        {
+            _segmentUp = _segment;
+            _segmentDown = _segment;
+            if (_guideIndex <= 0) return;
+
+            int last = _pos.Length - 1;
+            float total = _segment * last;
+            float hanging = Vector3.Distance(_arm.Guide.position, _arm.EndAnchor.position);
+            hanging = Mathf.Clamp(hanging, MinPieceMetres * (last - _guideIndex), total - MinPieceMetres * _guideIndex);
+            _segmentDown = hanging / (last - _guideIndex);
+            _segmentUp = (total - hanging) / _guideIndex;
+        }
+
+        // True for a point that does not move on its own: the two ends, and the groove point of a pulley.
+        private bool IsPinned(int i) => i == 0 || i == _pos.Length - 1 || i == _guideIndex;
+
+        // The rest length of the piece between point i and point i + 1.
+        private float PieceLength(int i) => i < _guideIndex ? _segmentUp : _segmentDown;
 
         // Verlet step: keep the speed from last step (with a little drag) and add gravity.
         private void MoveFreely(float dt)
@@ -202,6 +264,8 @@ namespace PhysicsLab.Lab.Rope
             float keep = Mathf.Exp(-dragPerSecond * dt);
             for (int i = 1; i < _pos.Length - 1; i++)
             {
+                if (IsPinned(i)) continue;
+
                 Vector3 velocity = (_pos[i] - _old[i]) * keep;
                 _old[i] = _pos[i];
                 _pos[i] += velocity + pull;
@@ -220,9 +284,11 @@ namespace PhysicsLab.Lab.Rope
                 float distance = gap.magnitude;
                 if (distance < 1e-6f) continue;
 
-                float error = (distance - _segment) / distance;
-                float shareA = i == 0 ? 0f : (i + 1 == last ? 1f : 0.5f);   // a pinned end does not move
-                float shareB = i + 1 == last ? 0f : (i == 0 ? 1f : 0.5f);
+                float error = (distance - PieceLength(i)) / distance;
+                bool startPinned = IsPinned(i);                             // a pinned point does not move
+                bool endPinned = IsPinned(i + 1);
+                float shareA = startPinned ? 0f : (endPinned ? 1f : 0.5f);
+                float shareB = endPinned ? 0f : (startPinned ? 1f : 0.5f);
                 _pos[i] += gap * (error * shareA);
                 _pos[i + 1] -= gap * (error * shareB);
             }
@@ -278,11 +344,13 @@ namespace PhysicsLab.Lab.Rope
 
             int last = _pos.Length - 1;
             for (int i = 1; i < last; i++) PushPointOutOfDisc(i);
-            for (int i = 0; i < last; i++) PushPieceOutOfDisc(i, last);
+            for (int i = 0; i < last; i++) PushPieceOutOfDisc(i);
         }
 
         private void PushPointOutOfDisc(int i)
         {
+            if (IsPinned(i)) return;
+
             Vector3 push = DiscPush(_pos[i], _old[i], out bool fromAbove);
             if (push == Vector3.zero) return;
 
@@ -291,15 +359,15 @@ namespace PhysicsLab.Lab.Rope
         }
 
         // The piece between point i and point i + 1. Only its middle is tested.
-        private void PushPieceOutOfDisc(int i, int last)
+        private void PushPieceOutOfDisc(int i)
         {
             Vector3 middle = (_pos[i] + _pos[i + 1]) * 0.5f;
             Vector3 middleBefore = (_old[i] + _old[i + 1]) * 0.5f;
             Vector3 push = DiscPush(middle, middleBefore, out _);
             if (push == Vector3.zero) return;
 
-            bool startFree = i > 0;                          // the first and the last point are pinned
-            bool endFree = i + 1 < last;
+            bool startFree = !IsPinned(i);                   // a pinned point does not move
+            bool endFree = !IsPinned(i + 1);
             float share = startFree && endFree ? 1f : 2f;    // one free end moves twice as far, so the middle still moves by push
             if (startFree) _pos[i] += push * share;
             if (endFree) _pos[i + 1] += push * share;
@@ -383,6 +451,8 @@ namespace PhysicsLab.Lab.Rope
         {
             for (int i = 1; i < _pos.Length - 1; i++)
             {
+                if (IsPinned(i)) continue;
+
                 Vector3 from = _old[i];
                 Vector3 move = _pos[i] - from;
                 float distance = move.magnitude;

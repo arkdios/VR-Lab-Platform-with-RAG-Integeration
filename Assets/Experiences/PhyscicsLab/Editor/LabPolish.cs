@@ -511,7 +511,9 @@ namespace PhysicsLab.Lab.EditorTools
             }
         }
 
-        // Draws a number centred on (cx, cy). The top of each digit points to world +Z.
+        // Draws a number centred on (cx, cy). The top of each digit points to world -Z, so a student who stands on
+        // the +Z side of the table (where the lab starts) reads it upright. Before, the top pointed to +Z and
+        // the numbers were upside down from the start point.
         private static void DrawText(Color32[] pixels, string text, int cx, int cy)
         {
             int glyphWidth = 5 * GlyphScale;
@@ -524,13 +526,13 @@ namespace PhysicsLab.Lab.EditorTools
             for (int i = 0; i < text.Length; i++)
             {
                 string[] rows = Glyphs[text[i] - '0'].Split('/');
-                int glyphLeft = left + i * (glyphWidth + GlyphGapPx);
+                int glyphLeft = left + (text.Length - 1 - i) * (glyphWidth + GlyphGapPx);   // turned half a turn: the last digit goes first
                 for (int row = 0; row < 7; row++)
                 {
                     for (int col = 0; col < 5; col++)
                     {
                         if (rows[row][col] != '1') continue;
-                        FillDot(pixels, glyphLeft + col * GlyphScale, bottom + (6 - row) * GlyphScale, ink);
+                        FillDot(pixels, glyphLeft + (4 - col) * GlyphScale, bottom + row * GlyphScale, ink);
                     }
                 }
             }

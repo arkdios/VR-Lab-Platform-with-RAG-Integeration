@@ -18,7 +18,8 @@ namespace PhysicsLab.Lab.EditorTools
         private static void Run()
         {
             var log = new StringBuilder("[LabBuildAll]\n");
-            bool ok = LabThirdPulleyBuilder.Run(log)
+            bool ok = LabPracticeBenchBuilder.RemoveOld(log)   // the practice bench is a copy with the same part names, so it goes first and is made again at the end
+                      && LabThirdPulleyBuilder.Run(log)
                       && LabSceneFixes.RunAll(log)
                       && LabPhysicsRepair.Run(log)
                       && LabStringBuilder.Run(log)
@@ -29,6 +30,8 @@ namespace PhysicsLab.Lab.EditorTools
                       && LabHangBuilder.Run(log)
                       && LabPolish.Run(log)
                       && LabStrandBuilder.Run(log)
+                      && LabUiBuilder.Run(log)
+                      && LabPracticeBenchBuilder.Run(log)
                       && LabBoardBuilder.Run(log);
 
             if (ok)

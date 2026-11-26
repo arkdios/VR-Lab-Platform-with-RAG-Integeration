@@ -16,6 +16,14 @@ namespace PhysicsLab.Lab.EditorTools
             return property != null ? property.objectReferenceValue as T : null;
         }
 
+        /// <summary>Reads a text field by name. Returns an empty text when the field does not exist.</summary>
+        public static string ReadString(Object owner, string field)
+        {
+            if (owner == null) return string.Empty;
+            SerializedProperty property = new SerializedObject(owner).FindProperty(field);
+            return property != null ? property.stringValue : string.Empty;
+        }
+
         /// <summary>Sets a bool field by name. Returns false when the field does not exist.</summary>
         public static bool SetBool(Object owner, string field, bool value)
         {

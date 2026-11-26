@@ -150,7 +150,9 @@ namespace PhysicsLab.Lab.EditorTools
         {
             foreach (Transform t in Resources.FindObjectsOfTypeAll<Transform>())
             {
-                if (t.name == objectName && t.gameObject.scene.IsValid() && !EditorUtility.IsPersistent(t)) return t;
+                if (t.name != objectName || !t.gameObject.scene.IsValid() || EditorUtility.IsPersistent(t)) continue;
+                if (PracticeZone.Contains(t)) continue;   // the practice bench is a copy of the lab: its parts have the same names
+                return t;
             }
             return null;
         }

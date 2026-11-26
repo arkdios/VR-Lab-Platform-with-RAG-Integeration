@@ -152,7 +152,7 @@ namespace PhysicsLab.Lab
             var valid = new List<RopeArm>(found.Length);
             foreach (RopeArm arm in found)
             {
-                if (arm.Link != null) valid.Add(arm);
+                if (arm.Link != null && !PracticeZone.Contains(arm)) valid.Add(arm);   // practice strings are not sent to the assistant
             }
             valid.Sort((a, b) => string.CompareOrdinal(a.name, b.name)); // the same order in every snapshot
             _arms = valid.ToArray();

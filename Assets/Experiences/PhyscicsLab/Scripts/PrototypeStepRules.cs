@@ -88,7 +88,7 @@ namespace PhysicsLab.Lab
         private bool TryResolveReferences()
         {
             if (recorder == null) recorder = FindAnyObjectByType<MeasurementRecorder>();
-            _pulleys = FindObjectsByType<Pulley>();
+            _pulleys = PracticeZone.Without(FindObjectsByType<Pulley>());   // the practice bench has pulleys too, they do not count
             _ringBody = ringObject != null ? ringObject.GetComponent<Rigidbody>() : null;
             _ringBounds = ringObject != null ? ringObject.GetComponent<TableBounds>() : null;
             _scale = springScaleObject != null ? springScaleObject.GetComponent<SpringScale>() : null;
@@ -105,6 +105,7 @@ namespace PhysicsLab.Lab
             foreach (RopeArm arm in FindObjectsByType<RopeArm>())
             {
                 if (arm.Link == null) continue; // the arm turned itself off because its setup is wrong
+                if (PracticeZone.Contains(arm)) continue; // a string of the practice bench is not part of the lab
 
                 _stringCount++;
                 if (arm.EndBody == scaleBody) _scaleArm = arm;

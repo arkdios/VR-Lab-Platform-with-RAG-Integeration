@@ -27,6 +27,8 @@ namespace PhysicsLab.Lab
         public const string Hanging = "hanging";
         public const string Connected = "connected";
         public const string Slack = "slack";
+        public const string Taut = "taut";
+        public const string NotAttached = "not-attached";
 
         private const string FreeEndId = "free-end";
         private const string TableId = "table";
@@ -88,6 +90,11 @@ namespace PhysicsLab.Lab
             if (state.held_by_user) state.status = Held;
             else if (arm == null) state.status = Loose;
             else state.status = arm.IsTaut ? Connected : Slack;
+
+            // The state of the string itself. It does not change when the student holds the scale (status says "held" then),
+            // so the assistant can tell "tied on but loose" from "not tied on" even while the scale is in a hand.
+            state.attached = arm != null;
+            state.connection = arm == null ? NotAttached : arm.IsTaut ? Taut : Slack;
         }
 
         public StringState[] ReadStrings()

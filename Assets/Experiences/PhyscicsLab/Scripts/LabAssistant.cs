@@ -43,10 +43,13 @@ namespace PhysicsLab.Lab
         [SerializeField] private ChatClient chatClient;
         [SerializeField] private PerfSampler perfSampler;
         [SerializeField] private ExperimentCondition condition = ExperimentCondition.StateAndHistory;
+        [Tooltip("Auto: the hint level goes up with each help question on the same step. Fixed: one level for every question, for experiments.")]
+        [SerializeField] private HintPolicy hintPolicy = HintPolicy.Auto;
         [Tooltip("Print each request and reply in the Console. Turn off for real measurements.")]
         [SerializeField] private bool logPayloads = true;
 
         private readonly ExperimentLog _experimentLog = new ExperimentLog();
+        private readonly HintLadder _hints = new HintLadder();
         private string _sessionId;
         private int _requestCounter;
 
@@ -59,6 +62,12 @@ namespace PhysicsLab.Lab
         {
             get => condition;
             set => condition = value;
+        }
+
+        public HintPolicy Policy
+        {
+            get => hintPolicy;
+            set => hintPolicy = value;
         }
 
         public event Action RequestStarted;
@@ -74,7 +83,7 @@ namespace PhysicsLab.Lab
             if (IsBusy) return;
 
             float buildStart = Time.realtimeSinceStartup;
-            string json = BuildRequestJson(question);
+            string json = BuildRequestJson(question, out int hintLevel);
             float buildMs = (Time.realtimeSinceStartup - buildStart) * 1000f;
 
             // PayloadGuard before sending to refuse to send a payload with a forbidden key.
@@ -85,7 +94,14 @@ namespace PhysicsLab.Lab
                 return;
             }
 
-            Send(json, new PendingRequest(question, condition, _requestCounter, buildMs));
+            // The hint level decides what the payload may hold. This refuses a payload that holds more.
+            if (PayloadGuard.TryFindHintLeak(json, hintLevel, out string leakedKey))
+            {
+                Debug.LogError($"[LabAssistant] Payload holds '{leakedKey}', which hint level {hintLevel} does not allow. Request not sent.", this);
+                return;
+            }
+
+            Send(json, new PendingRequest(question, condition, hintLevel, _requestCounter, buildMs));
         }
 
         private void Send(string json, PendingRequest pending)
@@ -96,7 +112,7 @@ namespace PhysicsLab.Lab
             chatClient.Post(json, result => OnResult(pending, result));
         }
 
-        private string BuildRequestJson(QuestionType question)
+        private string BuildRequestJson(QuestionType question, out int hintLevel)
         {
             LabStatePayload payload = stateTracker.Capture();
             payload.session_id = _sessionId;
@@ -104,7 +120,9 @@ namespace PhysicsLab.Lab
             payload.condition = WireNames.Of(condition);
             payload.question_type = WireNames.Of(question);
             payload.question = WireNames.QuestionText(question);
+            string stepId = payload.current_step;   // ApplyCondition may clear it, and the hint ladder needs it
             ApplyCondition(payload);
+            hintLevel = ApplyHintLevel(payload, stepId, question);
             payload.perf = new PerfState
             {
                 fps = perfSampler.Fps,
@@ -112,6 +130,16 @@ namespace PhysicsLab.Lab
                 frame_ms_max = perfSampler.FrameMsMax
             };
             return JsonUtility.ToJson(payload);
+        }
+
+        // Picks the hint level and removes what that level may not hold. Level 1 keeps neither list,
+        // level 2 keeps the diagnosis (the part and what is wrong), level 3 keeps the case values too.
+        private int ApplyHintLevel(LabStatePayload payload, string stepId, QuestionType question)
+        {
+            int level = _hints.LevelFor(hintPolicy, stepId, HintLadder.IsHelpQuestion(question));
+            HintLadder.Limit(payload, level);
+            payload.hint_policy = WireNames.Of(hintPolicy);
+            return level;
         }
 
         // Removes the fields this condition must not see.
@@ -140,6 +168,9 @@ namespace PhysicsLab.Lab
             payload.step_stage = string.Empty;
             payload.case_id = string.Empty;
             payload.failed_checks = new StepCheckState[0];
+            payload.passed_checks = new string[0];
+            payload.check_diagnosis = new CheckDiagnosisState[0];
+            payload.check_targets = new CheckTargetState[0];
         }
 
         private void OnResult(PendingRequest pending, ChatResult result)
@@ -190,6 +221,8 @@ namespace PhysicsLab.Lab
                 request_id = pending.RequestId,
                 condition = WireNames.Of(pending.Condition),
                 question_type = WireNames.Of(pending.Question),
+                hint_level = pending.HintLevel,
+                hint_policy = WireNames.Of(hintPolicy),
                 status = status.ToString(),
                 http_code = result.HttpCode,
                 request_started_ms = pending.StartedMs,
@@ -220,10 +253,11 @@ namespace PhysicsLab.Lab
         /// </summary>
         private readonly struct PendingRequest
         {
-            public PendingRequest(QuestionType question, ExperimentCondition condition, int requestId, float buildMs)
+            public PendingRequest(QuestionType question, ExperimentCondition condition, int hintLevel, int requestId, float buildMs)
             {
                 Question = question;
                 Condition = condition;
+                HintLevel = hintLevel;
                 RequestId = requestId;
                 BuildMs = buildMs;
                 StartedMs = SessionClock.NowMs;
@@ -232,6 +266,7 @@ namespace PhysicsLab.Lab
 
             public QuestionType Question { get; }
             public ExperimentCondition Condition { get; }
+            public int HintLevel { get; }
             public int RequestId { get; }
             public float BuildMs { get; }
             public long StartedMs { get; }

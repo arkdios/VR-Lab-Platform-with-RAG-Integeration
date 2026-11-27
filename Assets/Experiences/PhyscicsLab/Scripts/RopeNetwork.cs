@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 namespace PhysicsLab.Lab.Rope
 {
@@ -18,7 +19,8 @@ namespace PhysicsLab.Lab.Rope
         [SerializeField, Range(4, 30)] private int iterations = 12;
         [Tooltip("Physics step in seconds. 0.01 keeps a slack string from snapping hard.")]
         [SerializeField] private float stepSeconds = 0.01f;
-        [Tooltip("Shows each arm's tension and taut/slack state at the top left. Editor and development builds only.")]
+        [Tooltip("Allows the tension box (each arm's tension and taut/slack state, top left). Editor and development builds only. " +
+                 "The box starts hidden. Press F3 to show or hide it.")]
         [SerializeField] private bool showTensionsOnScreen = true;
 
         private Rigidbody[] _bodies;
@@ -27,6 +29,7 @@ namespace PhysicsLab.Lab.Rope
         private TableBounds[] _limits;
         private RopeLink[] _links;
         private bool _startChecked;
+        private bool _tensionsVisible;   // starts hidden: the box is plain screen text that does not scale with the student screen, so it covered the timer and the board
 
         private void Awake()
         {
@@ -99,10 +102,20 @@ namespace PhysicsLab.Lab.Rope
 
         private const float TensionTextTop = 100f;   // below the frame-rate label, so the two never overlap
 
+        // F3 shows or hides the tension box. It is for checking the strings against the slides, not for students.
+        private void Update()
+        {
+            if (!showTensionsOnScreen) return;
+            if (!Application.isEditor && !Debug.isDebugBuild) return;
+
+            Keyboard keyboard = Keyboard.current;
+            if (keyboard != null && keyboard.f3Key.wasPressedThisFrame) _tensionsVisible = !_tensionsVisible;
+        }
+
         // Debug text so you can check the tensions against the slides. Not drawn in a release build.
         private void OnGUI()
         {
-            if (!showTensionsOnScreen || arms == null) return;
+            if (!showTensionsOnScreen || !_tensionsVisible || arms == null) return;
             if (!Application.isEditor && !Debug.isDebugBuild) return;
 
             GUI.Box(new Rect(6f, TensionTextTop - 4f, 576f, 20f * arms.Length + 8f), GUIContent.none);   // dark box, so the text can be read

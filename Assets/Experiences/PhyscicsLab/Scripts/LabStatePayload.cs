@@ -42,6 +42,10 @@ namespace PhysicsLab.Lab
     {
         public float reading_n; // newtons
         public float angle_deg; // degrees, counter-clockwise like the pulleys: the direction of the string from the ring to the scale
+
+        // The state of the string between the ring and the scale, read from the rope itself (ground truth, not a guess).
+        public bool attached;                       // the string exists, so the scale is tied to the ring
+        public string connection = string.Empty;    // not-attached, slack (tied but loose, reads about 0 N) or taut (pulling)
     }
 
     /// <summary>
@@ -72,6 +76,33 @@ namespace PhysicsLab.Lab
         public float actual;
         public float limit;
         public string unit;   // deg, kg, N, mm, rows or yes/no
+    }
+
+    /// <summary>
+    /// Hint level 2 and 3 only. What is wrong with one failed check, as a code that Unity worked out.
+    /// object_id is the part the check is about. diagnosis is for example angle-too-large, mass-too-light,
+    /// not-clamped, scale-not-pulling, ring-off-centre. It never holds a number.
+    /// </summary>
+    [Serializable]
+    public class CheckDiagnosisState
+    {
+        public string id;         // the same id as in failed_checks
+        public string object_id;  // for example pulley-2, spring-scale, ring
+        public string diagnosis;
+    }
+
+    /// <summary>
+    /// Hint level 3 only. The number the case asks for and how far off the lab is. This is the answer
+    /// to the question "what should I change", so it is sent only when the hint level allows it.
+    /// error is actual minus case_value in the unit of the check. A negative error means too small.
+    /// </summary>
+    [Serializable]
+    public class CheckTargetState
+    {
+        public string id;         // the same id as in failed_checks
+        public float case_value;  // for example 30 (degrees) for pulley-2-angle in Case A
+        public float error;
+        public string unit;
     }
 
     [Serializable]
@@ -106,6 +137,11 @@ namespace PhysicsLab.Lab
         public string step_stage;         // setup, configure-masses, connect-scale, equilibrium or record
         public string case_id;            // A to D, empty during setup
         public StepCheckState[] failed_checks; // checks of the current step that do not pass yet, empty when the step is done
+        public string[] passed_checks = new string[0];  // ids of the checks of the current step that pass now
+        public int hint_level;            // 1 point to the table, 2 name the step, 3 give the fix. See HintLadder
+        public string hint_policy = string.Empty;       // auto (goes up with each question), fixed-1, fixed-2 or fixed-3
+        public CheckDiagnosisState[] check_diagnosis = new CheckDiagnosisState[0]; // hint level 2 and 3 only
+        public CheckTargetState[] check_targets = new CheckTargetState[0];         // hint level 3 only
         public EventRecord previous_action = new EventRecord();
         public string held_object;
         public string selected_object;

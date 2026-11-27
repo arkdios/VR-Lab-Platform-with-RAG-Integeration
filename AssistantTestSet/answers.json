@@ -1,0 +1,201 @@
+{
+    "note": "Scoring only. Never send this file, or any known_fix text, to the assistant.",
+    "setups": [
+        {
+            "config_id": "A-01",
+            "case_id": "A",
+            "step": "case-a-connect-scale",
+            "description": "Case A, connect scale. Pulley 1 at 120 deg with 200 g (right). Pulley 2 at 35 deg with 200 g (should be 30). The scale is tied on but slack. This is the setup of the 11-20 weekly report.",
+            "expected_failed_checks": [
+                "pulley-2-angle",
+                "scale-pulling"
+            ],
+            "known_fix": [
+                "Move pulley 2 from 35 to 30 degrees.",
+                "Pull the scale away from the ring until it reads at least 0.1 N (its string is tied on but slack)."
+            ]
+        },
+        {
+            "config_id": "A-02",
+            "case_id": "A",
+            "step": "case-a-connect-scale",
+            "description": "Case A, connect scale. Pulleys and masses are right. The scale is tied on but slack.",
+            "expected_failed_checks": [
+                "scale-pulling"
+            ],
+            "known_fix": [
+                "Pull the scale away from the ring until it reads at least 0.1 N. It is already tied on."
+            ]
+        },
+        {
+            "config_id": "A-03",
+            "case_id": "A",
+            "step": "case-a-configure-masses",
+            "description": "Case A, configure masses. Pulley 2 carries 100 g (should be 200 g).",
+            "expected_failed_checks": [
+                "pulley-2-mass"
+            ],
+            "known_fix": [
+                "Hang 200 g on pulley 2 instead of 100 g."
+            ]
+        },
+        {
+            "config_id": "A-04",
+            "case_id": "A",
+            "step": "case-a-configure-masses",
+            "description": "Case A, configure masses. Pulley 2 carries no mass (should be 200 g).",
+            "expected_failed_checks": [
+                "pulley-2-mass"
+            ],
+            "known_fix": [
+                "Hang 200 g on pulley 2."
+            ]
+        },
+        {
+            "config_id": "A-05",
+            "case_id": "A",
+            "step": "case-a-equilibrium",
+            "description": "Case A, equilibrium. Everything is right and the scale pulls, but the ring is 12 mm off the post.",
+            "expected_failed_checks": [
+                "ring-centred"
+            ],
+            "known_fix": [
+                "Move the scale so the ring sits on the centre post (within 3 mm)."
+            ]
+        },
+        {
+            "config_id": "A-06",
+            "case_id": "A",
+            "step": "case-a-record",
+            "description": "Case A, record. A good equilibrium measurement is held but not saved yet.",
+            "expected_failed_checks": [
+                "measurement-recorded"
+            ],
+            "known_fix": [
+                "Press Record to save the measurement."
+            ]
+        },
+        {
+            "config_id": "B-01",
+            "case_id": "B",
+            "step": "case-b-configure-masses",
+            "description": "Case B, configure masses. Pulley 2 at 85 deg (should be 80).",
+            "expected_failed_checks": [
+                "pulley-2-angle"
+            ],
+            "known_fix": [
+                "Move pulley 2 from 85 to 80 degrees."
+            ]
+        },
+        {
+            "config_id": "B-02",
+            "case_id": "B",
+            "step": "case-b-configure-masses",
+            "description": "Case B, configure masses. Pulley 2 is at 80 deg with 150 g but is not clamped to a table spot.",
+            "expected_failed_checks": [
+                "pulley-2-clamped"
+            ],
+            "known_fix": [
+                "Clamp pulley 2 onto its table spot at 80 degrees."
+            ]
+        },
+        {
+            "config_id": "B-03",
+            "case_id": "B",
+            "step": "case-b-connect-scale",
+            "description": "Case B, connect scale. Pulleys and masses are right. The scale string is barely taut and reads 0.05 N.",
+            "expected_failed_checks": [
+                "scale-pulling"
+            ],
+            "known_fix": [
+                "Pull the scale harder until it reads at least 0.1 N."
+            ]
+        },
+        {
+            "config_id": "B-04",
+            "case_id": "B",
+            "step": "case-b-equilibrium",
+            "description": "Case B, equilibrium. Everything is right and the ring is on the post, but the ring is still moving.",
+            "expected_failed_checks": [
+                "ring-stable"
+            ],
+            "known_fix": [
+                "Hold the scale still and wait until the ring stops moving (under 2 mm for 1 second)."
+            ]
+        },
+        {
+            "config_id": "C-01",
+            "case_id": "C",
+            "step": "case-c-connect-scale",
+            "description": "Case C, connect scale. Pulleys and masses are right. The scale is tied on but slack.",
+            "expected_failed_checks": [
+                "scale-pulling"
+            ],
+            "known_fix": [
+                "Pull the scale away from the ring until it reads at least 0.1 N. It is already tied on."
+            ]
+        },
+        {
+            "config_id": "C-02",
+            "case_id": "C",
+            "step": "case-c-connect-scale",
+            "description": "Case C, connect scale. Pulley 1 at 10 deg (should be 5). The scale already pulls.",
+            "expected_failed_checks": [
+                "pulley-1-angle"
+            ],
+            "known_fix": [
+                "Move pulley 1 from 10 to 5 degrees."
+            ]
+        },
+        {
+            "config_id": "D-01",
+            "case_id": "D",
+            "step": "case-d-configure-masses",
+            "description": "Case D, configure masses. Pulley 3 at 230 deg (should be 235).",
+            "expected_failed_checks": [
+                "pulley-3-angle"
+            ],
+            "known_fix": [
+                "Move pulley 3 from 230 to 235 degrees."
+            ]
+        },
+        {
+            "config_id": "D-02",
+            "case_id": "D",
+            "step": "case-d-configure-masses",
+            "description": "Case D, configure masses. Pulley 3 carries 200 g (should be 300 g).",
+            "expected_failed_checks": [
+                "pulley-3-mass"
+            ],
+            "known_fix": [
+                "Hang 300 g on pulley 3 instead of 200 g."
+            ]
+        },
+        {
+            "config_id": "D-03",
+            "case_id": "D",
+            "step": "case-d-configure-masses",
+            "description": "Case D, configure masses. Two faults: pulley 2 is not clamped, and pulley 3 carries no mass (should be 300 g).",
+            "expected_failed_checks": [
+                "pulley-2-clamped",
+                "pulley-3-mass"
+            ],
+            "known_fix": [
+                "Clamp pulley 2 onto its table spot at 100 degrees.",
+                "Hang 300 g on pulley 3."
+            ]
+        },
+        {
+            "config_id": "S-01",
+            "case_id": "",
+            "step": "setup",
+            "description": "Setup. Pulley 2 is not clamped. The scale reads 0 N.",
+            "expected_failed_checks": [
+                "pulley-2-clamped"
+            ],
+            "known_fix": [
+                "Clamp pulley 2 onto a table spot."
+            ]
+        }
+    ]
+}

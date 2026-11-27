@@ -30,6 +30,8 @@ namespace PhysicsLab.Core.Telemetry
         public string platform;
         public string gpu;
         public string user_agent;
+        public int hint_level;         // 1 to 3, see HintLadder
+        public string hint_policy;     // auto, fixed-1, fixed-2 or fixed-3
     }
 
     /// <summary>
@@ -40,7 +42,7 @@ namespace PhysicsLab.Core.Telemetry
         private const string Header =
             "session_id,request_id,condition,question_type,status,http_code,request_started_ms," +
             "context_build_ms,round_trip_ms,server_retrieval_ms,server_llm_ms,fps,frame_ms_avg," +
-            "frame_ms_max,answer_chars,build_version,platform,gpu,user_agent";
+            "frame_ms_max,answer_chars,build_version,platform,gpu,user_agent,hint_level,hint_policy";
 
         private readonly List<ExperimentRecord> _records = new List<ExperimentRecord>();
 
@@ -63,7 +65,7 @@ namespace PhysicsLab.Core.Telemetry
                 Number(r.context_build_ms), Number(r.round_trip_ms), Number(r.server_retrieval_ms),
                 Number(r.server_llm_ms), Number(r.fps), Number(r.frame_ms_avg), Number(r.frame_ms_max),
                 Number(r.answer_chars), Text(r.build_version), Text(r.platform), Text(r.gpu),
-                Text(r.user_agent));
+                Text(r.user_agent), Number(r.hint_level), Text(r.hint_policy));
             csv.Append(row).Append('\n');
         }
     }

@@ -18,6 +18,9 @@ namespace PhysicsLab.Lab
         private Lab5Step[] _steps = Lab5Procedure.BuildSteps(Lab5Procedure.CaseCountFor(DefaultPulleyCount));
         private readonly StepCheckState[] _failed = new StepCheckState[StepCheckSet.Capacity];
         private int _failedCount;
+        private readonly CheckResult[] _results = new CheckResult[StepCheckSet.Capacity];   // every check of the last tick, passed or not
+        private int _resultCount;
+        private bool _resultsDone;     // the step was done when these results were published
         private int _index;
         private bool _completed;       // true while the rules say the current step is done
         private float _stepStartTime;  // Time.time when the current step began
@@ -76,6 +79,7 @@ namespace PhysicsLab.Lab
             _index = index;
             _completed = false; // a restored step starts as not done, until the rules check it again
             _failedCount = 0;
+            _resultCount = 0;
             _stepStartTime = Time.time;
             return true;
         }
@@ -101,6 +105,17 @@ namespace PhysicsLab.Lab
             return copy;
         }
 
+        /// <summary>The ids of the checks of the current step that pass now.</summary>
+        public string[] CopyPassedCheckIds() => CheckPayloadBuilder.PassedIds(_results, _resultCount);
+
+        /// <summary>For each failed check: the object and what is wrong, as a code. Hint level 2 and 3.</summary>
+        public CheckDiagnosisState[] CopyDiagnosis() =>
+            CheckPayloadBuilder.Diagnosis(_results, _resultCount, _resultsDone);
+
+        /// <summary>For each failed check with a case value: the value and the signed error. Hint level 3 only.</summary>
+        public CheckTargetState[] CopyTargets() =>
+            CheckPayloadBuilder.Targets(_results, _resultCount, _resultsDone);
+
         /// <summary>
         /// Moves to the next step without any check. For test keys and tools only.
         /// </summary>
@@ -111,6 +126,7 @@ namespace PhysicsLab.Lab
             _index++;
             _completed = false;
             _failedCount = 0;
+            _resultCount = 0;
             _stepStartTime = Time.time;
             StepChanged?.Invoke(PreviousStepId, CurrentStepId);
             return true;
@@ -132,6 +148,7 @@ namespace PhysicsLab.Lab
         // Keeps a reusable copy of each failed check. Nothing is made after the first few ticks.
         private void StoreFailedChecks(bool complete, StepCheckSet checks)
         {
+            KeepResults(complete, checks);
             _failedCount = 0;
             if (complete) return;
 
@@ -144,6 +161,14 @@ namespace PhysicsLab.Lab
                 Fill(_failed[_failedCount], check);
                 _failedCount++;
             }
+        }
+
+        // Keeps a copy of every check of this tick (a struct copy, no garbage), for the diagnosis lists.
+        private void KeepResults(bool complete, StepCheckSet checks)
+        {
+            _resultCount = checks.Count;
+            _resultsDone = complete;
+            for (int i = 0; i < _resultCount; i++) _results[i] = checks[i];
         }
 
         private static void Fill(StepCheckState target, CheckResult check)

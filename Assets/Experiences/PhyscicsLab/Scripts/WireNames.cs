@@ -34,6 +34,18 @@ namespace PhysicsLab.Lab
             }
         }
 
+        public static string Of(HintPolicy policy)
+        {
+            switch (policy)
+            {
+                case HintPolicy.Auto: return "auto";
+                case HintPolicy.FixedTable: return "fixed-1";
+                case HintPolicy.FixedStep: return "fixed-2";
+                case HintPolicy.FixedAnswer: return "fixed-3";
+                default: throw new ArgumentOutOfRangeException(nameof(policy), policy, null);
+            }
+        }
+
         public static string QuestionText(QuestionType type)
         {
             switch (type)

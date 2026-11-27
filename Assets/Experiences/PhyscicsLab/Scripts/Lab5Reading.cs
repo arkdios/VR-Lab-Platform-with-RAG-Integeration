@@ -82,7 +82,11 @@ namespace PhysicsLab.Lab
         public static StepMeasurement None => default;
     }
 
-    /// <summary>One check: what it measured and the limit it was compared with.</summary>
+    /// <summary>
+    /// One check: what it measured and the limit it was compared with.
+    /// The simulation also knows, for certain, which object the check is about and what is wrong with it.
+    /// Subject, Diagnosis and the target fields carry that, so the assistant explains the problem and does not guess it.
+    /// </summary>
     public struct CheckResult
     {
         public string Id { get; set; }
@@ -90,11 +94,49 @@ namespace PhysicsLab.Lab
         public float Actual { get; set; }
         public float Limit { get; set; }
         public string Unit { get; set; }
+
+        /// <summary>The lab object the check is about, for example pulley-2, spring-scale, ring. Empty when not set.</summary>
+        public string Subject { get; set; }
+
+        /// <summary>What is wrong, as a code, for example angle-too-large. Empty when the check passes.</summary>
+        public string Diagnosis { get; set; }
+
+        /// <summary>True when the case asks for one number (an angle, a mass, a force).</summary>
+        public bool HasTarget { get; set; }
+
+        /// <summary>The number the case asks for, in the unit of the check.</summary>
+        public float Target { get; set; }
+
+        /// <summary>Actual minus Target, signed, in the unit of the check. A negative number means too small.</summary>
+        public float Error { get; set; }
+
+        /// <summary>Makes a plain check without the extra facts. WithSubject and WithTarget add them.</summary>
+        public static CheckResult Make(string id, string unit, bool passed, float actual, float limit) =>
+            new CheckResult { Id = id, Unit = unit, Passed = passed, Actual = actual, Limit = limit };
+
+        /// <summary>A copy that names the object and what is wrong. The diagnosis stays empty when the check passes.</summary>
+        public CheckResult WithSubject(string subject, string diagnosisWhenFailed)
+        {
+            CheckResult copy = this;
+            copy.Subject = subject;
+            copy.Diagnosis = Passed ? string.Empty : diagnosisWhenFailed;
+            return copy;
+        }
+
+        /// <summary>A copy that also holds the number the case asks for and how far off the lab is.</summary>
+        public CheckResult WithTarget(float target, float error)
+        {
+            CheckResult copy = this;
+            copy.HasTarget = true;
+            copy.Target = target;
+            copy.Error = error;
+            return copy;
+        }
     }
 
     /// <summary>
     /// The checks of one tick. A fixed array that is cleared and refilled, so it makes no garbage.
-    /// The Add methods are named after the unit, so each call has four arguments or fewer.
+    /// CheckResult.Make, WithSubject and WithTarget build a check, so no call needs more than five arguments.
     /// </summary>
     public sealed class StepCheckSet
     {
@@ -113,24 +155,8 @@ namespace PhysicsLab.Lab
             FailedCount = 0;
         }
 
-        /// <summary>A yes/no check. Actual 1 means yes, and the limit is 1.</summary>
-        public void AddFlag(string id, bool value) =>
-            Store(new CheckResult { Id = id, Passed = value, Actual = value ? 1f : 0f, Limit = 1f, Unit = "yes/no" });
-
-        public void AddDegrees(string id, bool passed, float actual, float limit) =>
-            Store(new CheckResult { Id = id, Passed = passed, Actual = actual, Limit = limit, Unit = "deg" });
-
-        public void AddKilograms(string id, bool passed, float actual, float limit) =>
-            Store(new CheckResult { Id = id, Passed = passed, Actual = actual, Limit = limit, Unit = "kg" });
-
-        public void AddNewtons(string id, bool passed, float actual, float limit) =>
-            Store(new CheckResult { Id = id, Passed = passed, Actual = actual, Limit = limit, Unit = "N" });
-
-        public void AddMillimetres(string id, bool passed, float actual, float limit) =>
-            Store(new CheckResult { Id = id, Passed = passed, Actual = actual, Limit = limit, Unit = "mm" });
-
-        public void AddRows(string id, bool passed, float actual, float limit) =>
-            Store(new CheckResult { Id = id, Passed = passed, Actual = actual, Limit = limit, Unit = "rows" });
+        /// <summary>Adds a finished check, for the ones that carry a subject, a diagnosis or a target.</summary>
+        public void Add(CheckResult check) => Store(check);
 
         private void Store(CheckResult check)
         {

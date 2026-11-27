@@ -14,7 +14,14 @@ namespace PhysicsLab.Lab
         private const float AngleCostWeight = 0.01f / 180f;   // a tie-breaker, much smaller than one failed check
         private const float MassCostWeight = 0.01f / 0.5f;
 
+        // The objects a check can be about. The pulley ids come from the scene.
+        private const string ScaleSubject = "spring-scale";
+        private const string RingSubject = "ring";
+        private const string StringsSubject = "strings";
+        private const string LabSubject = "lab";
+
         private readonly Lab5Tolerances _tolerance;
+        private readonly string[] _pulleyIds;
         private readonly string[] _clampedIds;
         private readonly string[] _angleIds;
         private readonly string[] _massIds;
@@ -34,6 +41,7 @@ namespace PhysicsLab.Lab
             }
 
             _tolerance = tolerances;
+            _pulleyIds = (string[])pulleyIds.Clone();
             _clampedIds = SuffixAll(pulleyIds, "-clamped");
             _angleIds = SuffixAll(pulleyIds, "-angle");
             _massIds = SuffixAll(pulleyIds, "-mass");
@@ -116,31 +124,42 @@ namespace PhysicsLab.Lab
 
         private void AddSetupChecks(LabReading reading, StepCheckSet checks)
         {
-            checks.AddFlag("strings-connected", reading.StringsConnected);
+            checks.Add(Flag("strings-connected", reading.StringsConnected, StringsSubject, "strings-not-connected"));
             for (int pulley = 0; pulley < reading.PulleyCount; pulley++)
             {
-                checks.AddFlag(_clampedIds[pulley], reading.Pulleys[pulley].Clamped);
+                checks.Add(Flag(_clampedIds[pulley], reading.Pulleys[pulley].Clamped, _pulleyIds[pulley], "not-clamped"));
             }
             bool zero = MathF.Abs(reading.ScaleReadingN) <= _tolerance.scaleZeroN;
-            checks.AddNewtons("scale-zero", zero, Round(reading.ScaleReadingN), _tolerance.scaleZeroN);
+            float shown = Round(reading.ScaleReadingN);
+            checks.Add(CheckResult.Make("scale-zero", "N", zero, shown, _tolerance.scaleZeroN)
+                .WithSubject(ScaleSubject, "scale-not-zero")
+                .WithTarget(0f, shown));
         }
 
+        // The scale string is always tied on in this lab, so "scale-attached" only fails if the string is missing.
+        // A scale that is tied on but reads too little is "scale-not-pulling": its string is slack.
         private void AddScaleChecks(LabReading reading, StepCheckSet checks)
         {
-            checks.AddFlag("scale-attached", reading.ScaleAttached);
+            checks.Add(Flag("scale-attached", reading.ScaleAttached, ScaleSubject, "scale-not-attached"));
             bool pulling = reading.ScaleAttached && reading.ScaleReadingN >= _tolerance.scalePullingN;
-            checks.AddNewtons("scale-pulling", pulling, Round(reading.ScaleReadingN), _tolerance.scalePullingN);
+            float shown = Round(reading.ScaleReadingN);
+            checks.Add(CheckResult.Make("scale-pulling", "N", pulling, shown, _tolerance.scalePullingN)
+                .WithSubject(ScaleSubject, reading.ScaleAttached ? "scale-not-pulling" : "scale-not-attached")
+                .WithTarget(_tolerance.scalePullingN, Round(reading.ScaleReadingN - _tolerance.scalePullingN)));
         }
 
         private void AddRingChecks(LabReading reading, StepCheckSet checks)
         {
             bool centred = reading.RingOffsetM <= _tolerance.ringCentredMetres;
-            checks.AddMillimetres("ring-centred", centred, Round(reading.RingOffsetM * 1000f),
-                Round(_tolerance.ringCentredMetres * 1000f));
+            float offsetMm = Round(reading.RingOffsetM * 1000f);
+            checks.Add(CheckResult.Make("ring-centred", "mm", centred, offsetMm, Round(_tolerance.ringCentredMetres * 1000f))
+                .WithSubject(RingSubject, "ring-off-centre")
+                .WithTarget(0f, offsetMm));
 
             bool steady = reading.WindowFull && reading.RingSpreadM <= _tolerance.ringStableMetres;
-            checks.AddMillimetres("ring-stable", steady, Round(reading.RingSpreadM * 1000f),
-                Round(_tolerance.ringStableMetres * 1000f));
+            checks.Add(CheckResult.Make("ring-stable", "mm", steady, Round(reading.RingSpreadM * 1000f),
+                    Round(_tolerance.ringStableMetres * 1000f))
+                .WithSubject(RingSubject, "ring-moving"));
         }
 
         private void AddEquilibriumChecks(int caseIndex, LabReading reading, StepCheckSet checks)
@@ -154,7 +173,8 @@ namespace PhysicsLab.Lab
         private void AddRecordChecks(int caseIndex, LabReading reading, StepCheckSet checks)
         {
             bool saved = reading.ValidRecordsForCase > 0;
-            checks.AddRows("measurement-recorded", saved, reading.ValidRecordsForCase, 1f);
+            checks.Add(CheckResult.Make("measurement-recorded", "rows", saved, reading.ValidRecordsForCase, 1f)
+                .WithSubject(LabSubject, "not-recorded"));
             if (saved || reading.MeasurementReady) return;
 
             AddEquilibriumChecks(caseIndex, reading, checks);
@@ -173,16 +193,25 @@ namespace PhysicsLab.Lab
             }
         }
 
+        // Each check also records the case value and how far off the lab is (a signed error), so the assistant
+        // can explain a fix that Unity has already worked out. LabAssistant decides how much of it to send (hint level).
         private void AddPulleyChecks(int pulley, CaseLoad load, PulleyReading actual, StepCheckSet checks)
         {
+            string subject = _pulleyIds[pulley];
             if (!load.IsEmpty)
             {
-                checks.AddFlag(_clampedIds[pulley], actual.Clamped);
-                bool angleOk = AngleDistance(actual.AngleDeg, load.AngleDeg) <= _tolerance.pulleyAngleDeg;
-                checks.AddDegrees(_angleIds[pulley], angleOk, Round(actual.AngleDeg), _tolerance.pulleyAngleDeg);
+                checks.Add(Flag(_clampedIds[pulley], actual.Clamped, subject, "not-clamped"));
+                float angleError = SignedAngleDifference(actual.AngleDeg, load.AngleDeg);
+                bool angleOk = MathF.Abs(angleError) <= _tolerance.pulleyAngleDeg;
+                checks.Add(CheckResult.Make(_angleIds[pulley], "deg", angleOk, Round(actual.AngleDeg), _tolerance.pulleyAngleDeg)
+                    .WithSubject(subject, angleError < 0f ? "angle-too-small" : "angle-too-large")
+                    .WithTarget(load.AngleDeg, Round(angleError)));
             }
-            bool massOk = MathF.Abs(actual.MassKg - load.MassKg) <= _tolerance.massKg;
-            checks.AddKilograms(_massIds[pulley], massOk, Round(actual.MassKg), _tolerance.massKg);
+            float massError = actual.MassKg - load.MassKg;
+            bool massOk = MathF.Abs(massError) <= _tolerance.massKg;
+            checks.Add(CheckResult.Make(_massIds[pulley], "kg", massOk, Round(actual.MassKg), _tolerance.massKg)
+                .WithSubject(subject, massError < 0f ? "mass-too-light" : "mass-too-heavy")
+                .WithTarget(load.MassKg, Round(massError)));
         }
 
         // The pulleys are the same, so the student may put the 80 degree mass on either one.
@@ -232,6 +261,20 @@ namespace PhysicsLab.Lab
         }
 
         // ---------- small helpers ----------
+
+        // A yes/no check that also names the object and what is wrong. Actual 1 means yes, and the limit is 1.
+        private static CheckResult Flag(string id, bool value, string subject, string diagnosisWhenFailed) =>
+            CheckResult.Make(id, "yes/no", value, value ? 1f : 0f, 1f).WithSubject(subject, diagnosisWhenFailed);
+
+        // The smallest turn from b to a, with its sign: 359 and 1 are -2 degrees apart, and 1 and 359 are 2.
+        // A negative result means a is before b (too small), a positive one means a is past b (too large).
+        private static float SignedAngleDifference(float a, float b)
+        {
+            float turn = (a - b) % 360f;
+            if (turn > 180f) turn -= 360f;
+            if (turn <= -180f) turn += 360f;
+            return turn;
+        }
 
         // The smallest turn between two angles, so 359 and 1 are 2 degrees apart.
         private static float AngleDistance(float a, float b)

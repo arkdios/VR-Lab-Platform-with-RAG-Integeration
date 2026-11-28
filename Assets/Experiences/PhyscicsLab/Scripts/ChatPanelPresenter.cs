@@ -18,6 +18,7 @@ namespace PhysicsLab.Lab
 
     /// <summary>
     /// Chat panel consists of four fixed question buttons, a status line and the answer text.
+    /// A long answer scrolls inside the answer area.
     /// </summary>
     public class ChatPanelPresenter : MonoBehaviour
     {
@@ -25,6 +26,8 @@ namespace PhysicsLab.Lab
         [SerializeField] private QuestionButton[] questionButtons;
         [SerializeField] private TMP_Text statusLabel;
         [SerializeField] private TMP_Text answerLabel;
+        [Tooltip("The scroll area that holds the answer text. Optional: without it the answer just stays where it is.")]
+        [SerializeField] private ScrollRect answerScroll;
 
         private void Awake()
         {
@@ -64,6 +67,17 @@ namespace PhysicsLab.Lab
             SetButtonsInteractable(true);
             statusLabel.text = StatusMessage(reply.Status);
             answerLabel.text = reply.Status == ChatStatus.Success ? reply.Text : string.Empty;
+            ScrollAnswerToTop();
+        }
+
+        // A new answer starts at its first line, not where the last answer was scrolled to.
+        // The text is anchored to the top of the scroll area, so position 0 is the top.
+        private void ScrollAnswerToTop()
+        {
+            if (answerScroll == null) return;
+
+            answerScroll.StopMovement();
+            answerScroll.content.anchoredPosition = Vector2.zero;
         }
 
         private void SetButtonsInteractable(bool interactable)

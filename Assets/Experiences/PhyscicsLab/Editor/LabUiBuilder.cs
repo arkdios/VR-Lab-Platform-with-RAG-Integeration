@@ -15,7 +15,9 @@ namespace PhysicsLab.Lab.EditorTools
     /// Changes the student screen (the object StudentScreen under Lab UI):
     ///  1. Left panel (HUDPanel): adds a timer line on top and a Finish button at the bottom, and makes the panel a little wider and taller.
     ///  2. Right panel (ChatPanel, the assistant): makes it much bigger, with a title, a 2 x 2 grid of question buttons,
-    ///     a status line and a big answer area. The old panel was 640 x 370 and its buttons were 100 x 100.
+    ///     a status line and a big answer area that scrolls when the answer is long (mouse wheel, drag or the bar).
+    ///     The old panel was 640 x 370 and its buttons were 100 x 100.
+    ///     It also gets a Hide button (and the H key), and an Assistant tab at the right edge that brings the panel back.
     ///  3. Makes the notice that opens when the student presses Finish (FinishPanel, a child of Lab UI).
     ///  4. Adds the LabSession object with LabTimer and LabFinishController, and gives them their links.
     ///  5. Makes the headset copy of the screen a little bigger and farther away, so the bigger panels fit.
@@ -45,6 +47,13 @@ namespace PhysicsLab.Lab.EditorTools
         private const string AnswerBackgroundName = "AnswerBackground";
         private const string NoticeName = "FinishPanel";
         private const string SessionName = "LabSession";
+        private const string HideButtonName = "HideAssistantButton";
+        private const string ShowTabName = "AssistantTab";
+        private const string AnswerScrollName = "AnswerScroll";
+        private const string ViewportName = "Viewport";
+        private const string ScrollbarName = "AnswerScrollbar";
+        private const string SlidingAreaName = "SlidingArea";
+        private const string HandleName = "Handle";
 
         // Left panel. Heights are in canvas pixels (the canvas is 1920 x 1080 on the desktop).
         private const float HudWidth = 380f;
@@ -60,6 +69,22 @@ namespace PhysicsLab.Lab.EditorTools
         private const float ChatGap = 12f;
         private const float ChatButtonHeight = 88f;
 
+        // Hide button (in the panel header) and Assistant tab (at the right edge of the screen).
+        private const float HideButtonWidth = 170f;
+        private const float HideButtonHeight = 48f;
+        private const float HideButtonTop = 14f;   // the same top gap as the ChatTitle row
+        private const float TabWidth = 210f;
+        private const float TabHeight = 64f;
+
+        // The answer area. The text keeps one size and scrolls, so a long answer never shrinks into small print.
+        private const float AnswerFontSize = 24f;
+        private const float AnswerInsetSide = 16f;
+        private const float AnswerInsetTop = 14f;
+        private const float AnswerInsetBottom = 12f;
+        private const float ScrollbarWidth = 14f;
+        private const float ScrollbarGap = 6f;
+        private const float AnswerScrollSensitivity = 30f;
+
         // The headset copy of the screen (HudCanvasAdapter).
         private const float VrDistanceMetres = 1.5f;
         private static readonly Vector2 VrSizePixels = new Vector2(1500f, 800f);
@@ -70,6 +95,8 @@ namespace PhysicsLab.Lab.EditorTools
         private static readonly Color DimColour = new Color(0f, 0f, 0f, 0.65f);
         private static readonly Color FinishTint = new Color(0.78f, 0.93f, 0.80f, 1f);
         private static readonly Color DoneColour = new Color(0.55f, 0.90f, 0.60f, 1f);
+        private static readonly Color ScrollTrackColour = new Color(1f, 1f, 1f, 0.08f);
+        private static readonly Color ScrollHandleColour = new Color(0.31f, 0.76f, 0.97f, 0.85f);
 
         [MenuItem("Lab/Build student screen (timer, Finish, bigger assistant)")]
         private static void Menu()
@@ -117,11 +144,12 @@ namespace PhysicsLab.Lab.EditorTools
 
             TMP_Text timerLabel = BuildHudPanel(hudPanel, stepLabel, nextButton, out Button finishButton, out TMP_Text finishLabel);
             BuildChatPanel(chatPanel, statusLabel);
+            BuildAssistantToggle(chatPanel, nextButton);
             NoticeParts notice = BuildNotice(labUi, statusLabel, nextButton);
             bool wired = WireSession(labUi, timerLabel, finishButton, finishLabel, notice, log);
             if (wired) MakeHeadsetScreenBigger(log);
 
-            log.AppendLine("  Student screen built: timer and Finish on the left, bigger assistant on the right, Finish notice made.");
+            log.AppendLine("  Student screen built: timer and Finish on the left, bigger assistant (scrolling answer, Hide button, H key) on the right, Finish notice made.");
             return wired;
         }
 
@@ -239,10 +267,11 @@ namespace PhysicsLab.Lab.EditorTools
             }
         }
 
-        // The answer sits on a lighter panel and has the rest of the space. The text shrinks to fit (auto size) if the answer is long.
+        // The answer sits on a lighter panel and has the rest of the space.
+        // The text is inside a scroll area, so a long answer scrolls and keeps its size.
         private static void BuildAnswerArea(Transform chatPanel)
         {
-            Transform answer = chatPanel.Find(AnswerLabelName);
+            Transform answer = FindDeep(chatPanel, AnswerLabelName);   // it moves into the scroll area, so look below the panel
             if (answer == null) return;
 
             Transform background = FindOrCreateImage(chatPanel, AnswerBackgroundName, AnswerColour);
@@ -250,10 +279,137 @@ namespace PhysicsLab.Lab.EditorTools
             float top = 2f * ChatButtonHeight + ChatGap + 82f + 34f + 12f;
             SetFill((RectTransform)background, 16f, 16f, 16f, top);
 
-            SetFill((RectTransform)answer, 32f, 28f, 32f, top + 14f);
+            ScrollRect scroll = BuildAnswerScroll(chatPanel, top);
+            PlaceAnswerInScroll(answer, scroll);
+
+            var presenter = chatPanel.GetComponent<ChatPanelPresenter>();
+            if (presenter != null) LabSerialized.SetObject(presenter, "answerScroll", scroll);
+        }
+
+        // AnswerScroll (the ScrollRect) holds a Viewport that cuts the text off at its edge, and a thin bar on the right.
+        // The Viewport has an invisible Image so a click or a drag anywhere in the area scrolls it.
+        private static ScrollRect BuildAnswerScroll(Transform chatPanel, float top)
+        {
+            RectTransform root = FindOrMakeRect(chatPanel, AnswerScrollName);
+            root.SetSiblingIndex(1);   // above the answer background, below the buttons
+            SetFill(root, 16f, 16f, 16f, top);
+            var scroll = GetOrAdd<ScrollRect>(root.gameObject);
+
+            RectTransform viewport = FindOrMakeRect(root, ViewportName);
+            SetFill(viewport, AnswerInsetSide, AnswerInsetBottom, ScrollbarWidth + 2f * ScrollbarGap, AnswerInsetTop);
+            var hitArea = GetOrAdd<Image>(viewport.gameObject);
+            hitArea.color = Color.clear;
+            hitArea.raycastTarget = true;
+            GetOrAdd<RectMask2D>(viewport.gameObject);
+
+            Scrollbar bar = BuildAnswerScrollbar(root);
+
+            Undo.RecordObject(scroll, "Answer scroll");
+            scroll.viewport = viewport;
+            scroll.horizontal = false;
+            scroll.vertical = true;
+            scroll.movementType = ScrollRect.MovementType.Clamped;
+            scroll.scrollSensitivity = AnswerScrollSensitivity;
+            scroll.verticalScrollbar = bar;
+            scroll.verticalScrollbarVisibility = ScrollRect.ScrollbarVisibility.AutoHide;   // the bar shows only when the answer is longer than the area
+            return scroll;
+        }
+
+        // A flat bar made by hand: a track, a sliding area and a handle. No sprite is needed, so it is plain colour.
+        private static Scrollbar BuildAnswerScrollbar(RectTransform scrollRoot)
+        {
+            RectTransform bar = FindOrMakeRect(scrollRoot, ScrollbarName);
+            Undo.RecordObject(bar, "Scrollbar");
+            bar.anchorMin = new Vector2(1f, 0f);
+            bar.anchorMax = new Vector2(1f, 1f);
+            bar.pivot = new Vector2(1f, 0.5f);
+            bar.sizeDelta = new Vector2(ScrollbarWidth, -2f * AnswerInsetBottom);
+            bar.anchoredPosition = new Vector2(-ScrollbarGap, 0f);
+            GetOrAdd<Image>(bar.gameObject).color = ScrollTrackColour;
+
+            RectTransform area = FindOrMakeRect(bar, SlidingAreaName);
+            SetFill(area, 0f, 0f, 0f, 0f);
+
+            RectTransform handle = FindOrMakeRect(area, HandleName);
+            Undo.RecordObject(handle, "Scrollbar handle");
+            handle.offsetMin = Vector2.zero;   // the Scrollbar moves the anchors, so the offsets must be 0
+            handle.offsetMax = Vector2.zero;
+            var handleImage = GetOrAdd<Image>(handle.gameObject);
+            handleImage.color = ScrollHandleColour;
+
+            var scrollbar = GetOrAdd<Scrollbar>(bar.gameObject);
+            Undo.RecordObject(scrollbar, "Scrollbar");
+            scrollbar.handleRect = handle;
+            scrollbar.targetGraphic = handleImage;
+            scrollbar.direction = Scrollbar.Direction.BottomToTop;
+            return scrollbar;
+        }
+
+        // The answer text becomes the content of the scroll area: full width, as tall as its text (ContentSizeFitter),
+        // fixed size, top left. It hangs from the top, so a new answer starts at the top (ChatPanelPresenter).
+        private static void PlaceAnswerInScroll(Transform answer, ScrollRect scroll)
+        {
+            if (answer.parent != scroll.viewport) Undo.SetTransformParent(answer, scroll.viewport, "Answer in scroll");
+
+            var rect = (RectTransform)answer;
+            Undo.RecordObject(rect, "Answer text");
+            rect.anchorMin = new Vector2(0f, 1f);
+            rect.anchorMax = Vector2.one;
+            rect.pivot = new Vector2(0.5f, 1f);
+            rect.anchoredPosition = Vector2.zero;
+            rect.sizeDelta = Vector2.zero;
+
+            var fitter = GetOrAdd<ContentSizeFitter>(answer.gameObject);
+            Undo.RecordObject(fitter, "Answer fit");
+            fitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
+            fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+
             var text = answer.GetComponent<TMP_Text>();
+            Undo.RecordObject(text, "Answer text size");
             text.alignment = TextAlignmentOptions.TopLeft;
-            SetAutoSize(text, 18f, 30f);
+            text.enableAutoSizing = false;
+            text.fontSize = AnswerFontSize;
+
+            Undo.RecordObject(scroll, "Answer content");
+            scroll.content = rect;
+        }
+
+        // ---------- hide and show the assistant ----------
+
+        // The Hide button sits in the panel header, on the right. The Assistant tab sits at the right edge of the screen
+        // and shows only while the panel is hidden. AssistantPanelToggle does the work (and the H key).
+        private static void BuildAssistantToggle(Transform chatPanel, Transform nextButton)
+        {
+            Transform screen = chatPanel.parent;
+            var panelGroup = GetOrAdd<CanvasGroup>(chatPanel.gameObject);
+
+            Button hide = FindOrCopyButton(chatPanel, HideButtonName, nextButton, "Hide (H)");
+            SetAnchored((RectTransform)hide.transform, new Vector2(1f, 1f), new Vector2(HideButtonWidth, HideButtonHeight), new Vector2(-ChatSide, -HideButtonTop));
+            hide.transform.SetAsLastSibling();   // on top of the title row
+
+            Button tab = FindOrCopyButton(screen, ShowTabName, nextButton, "Assistant (H)");
+            SetAnchored((RectTransform)tab.transform, new Vector2(1f, 0.5f), new Vector2(TabWidth, TabHeight), new Vector2(-ChatGap, 0f));
+            Undo.RecordObject(tab.gameObject, "Assistant tab");
+            tab.gameObject.SetActive(false);   // the panel is open at the start
+
+            AssistantPanelToggle toggle = GetOrAdd<AssistantPanelToggle>(screen.gameObject);
+            LabSerialized.SetObject(toggle, "panelGroup", panelGroup);
+            LabSerialized.SetObject(toggle, "hideButton", hide);
+            LabSerialized.SetObject(toggle, "showTab", tab);
+        }
+
+        // A button copied from the Next step button, so it looks the same.
+        private static Button FindOrCopyButton(Transform parent, string buttonName, Transform template, string label)
+        {
+            Transform button = FindOrCopy(parent, buttonName, template.gameObject);
+            var text = button.GetComponentInChildren<TMP_Text>(true);
+            text.text = label;
+            SetAutoSize(text, 16f, 26f);
+
+            var component = button.GetComponent<Button>();
+            Undo.RecordObject(component, "Button state");
+            component.interactable = true;
+            return component;
         }
 
         // ---------- the Finish notice ----------
@@ -424,6 +580,23 @@ namespace PhysicsLab.Lab.EditorTools
             return existing;
         }
 
+        // Finds a child rectangle by name, or makes an empty one.
+        private static RectTransform FindOrMakeRect(Transform parent, string rectName)
+        {
+            Transform existing = parent.Find(rectName);
+            return existing != null ? (RectTransform)existing : MakeRect(parent, rectName);
+        }
+
+        // Finds a part by name at any depth below the root (inactive parts too).
+        private static Transform FindDeep(Transform root, string partName)
+        {
+            foreach (Transform part in root.GetComponentsInChildren<Transform>(true))
+            {
+                if (part.name == partName) return part;
+            }
+            return null;
+        }
+
         private static RectTransform MakeRect(Transform parent, string rectName)
         {
             var go = new GameObject(rectName, typeof(RectTransform));
@@ -474,6 +647,16 @@ namespace PhysicsLab.Lab.EditorTools
             rect.pivot = new Vector2(0.5f, 0.5f);
             rect.offsetMin = new Vector2(left, bottom);
             rect.offsetMax = new Vector2(-right, -top);
+        }
+
+        // Fixed size at a corner or an edge. The anchor and the pivot are the same point, so the numbers are the gap to that edge.
+        private static void SetAnchored(RectTransform rect, Vector2 anchor, Vector2 size, Vector2 position)
+        {
+            Undo.RecordObject(rect, "Anchored");
+            rect.anchorMin = rect.anchorMax = anchor;
+            rect.pivot = anchor;
+            rect.sizeDelta = size;
+            rect.anchoredPosition = position;
         }
 
         private static void SetCentre(RectTransform rect, Vector2 size)
